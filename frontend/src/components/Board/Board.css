@@ -1,0 +1,46 @@
+.board {
+  flex: 1;
+  overflow: hidden;
+  padding: 20px;
+}
+
+.board__columns {
+  display: flex;
+  gap: 16px;
+  height: 100%;
+  overflow-x: auto;
+  padding-bottom: 20px;
+}
+
+.board__add-column {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 280px;
+  height: 80px;
+  background: transparent;
+  border: 2px dashed var(--border);
+  border-radius: var(--radius-lg);
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 500;
+  transition: all var(--transition-fast);
+}
+
+.board__add-column:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-light);
+}
+
+.board__drag-overlay {
+  width: 300px;
+  transform: rotate(3deg);
+  opacity: 0.9;
+}
+
+.board__drag-overlay .task-card {
+  box-shadow: var(--shadow-lg);
+}

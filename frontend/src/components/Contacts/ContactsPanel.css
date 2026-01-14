@@ -1,0 +1,349 @@
+.contacts-panel-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.contacts-panel {
+  width: 900px;
+  max-width: 95vw;
+  height: 600px;
+  max-height: 90vh;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+}
+
+.contacts-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.contacts-panel__header h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.contacts-panel__header h2 svg {
+  color: var(--accent);
+}
+
+.contacts-panel__body {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+/* Lista de contatos */
+.contacts-panel__list {
+  width: 280px;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+}
+
+.contacts-panel__list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.contacts-panel__list-items {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.contacts-panel__list-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  transition: background var(--transition-fast);
+}
+
+.contacts-panel__list-item:hover {
+  background: var(--bg-column);
+}
+
+.contacts-panel__list-item--active {
+  background: var(--accent-light);
+}
+
+.contacts-panel__list-item-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.contacts-panel__list-item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.contacts-panel__list-item-name {
+  display: block;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.contacts-panel__list-item-company {
+  display: block;
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.contacts-panel__list-item-notes {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.contacts-panel__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 40px 20px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* Detalhe do contato */
+.contacts-panel__detail {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.contacts-panel__placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 16px;
+  color: var(--text-muted);
+}
+
+/* Formulário */
+.contacts-panel__form {
+  padding: 24px;
+}
+
+.contacts-panel__form h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 20px;
+  color: var(--text-primary);
+}
+
+.contacts-panel__form .label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.contacts-panel__form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+/* Detalhes do contato */
+.contacts-panel__contact {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.contacts-panel__contact-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.contacts-panel__contact-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 20px;
+}
+
+.contacts-panel__contact-info {
+  flex: 1;
+}
+
+.contacts-panel__contact-info h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.contacts-panel__contact-info p {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.contacts-panel__contact-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.contacts-panel__contact-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.contacts-panel__info-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg-column);
+  border-radius: var(--radius);
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.contacts-panel__info-card a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.contacts-panel__info-card a:hover {
+  text-decoration: underline;
+}
+
+/* Notas */
+.contacts-panel__notes {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 20px;
+  overflow: hidden;
+}
+
+.contacts-panel__notes h4 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+}
+
+.contacts-panel__notes-input {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.contacts-panel__notes-input textarea {
+  flex: 1;
+  resize: none;
+}
+
+.contacts-panel__notes-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.contacts-panel__note {
+  padding: 12px;
+  background: var(--bg-column);
+  border-radius: var(--radius);
+}
+
+.contacts-panel__note-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.contacts-panel__note-date {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.contacts-panel__note-delete {
+  padding: 4px;
+  color: var(--text-muted);
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.contacts-panel__note:hover .contacts-panel__note-delete {
+  opacity: 1;
+}
+
+.contacts-panel__note-delete:hover {
+  color: var(--danger);
+}
+
+.contacts-panel__note-content {
+  font-size: 13px;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
+
+.contacts-panel__notes-empty {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+  padding: 20px;
+}

@@ -1,0 +1,127 @@
+.task-modal {
+  max-width: 520px;
+}
+
+.task-modal__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.task-modal__metrics-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding: 16px;
+  background: var(--success-light);
+  border-radius: var(--radius);
+  margin-bottom: 16px;
+}
+
+.task-modal__metrics-section .form-group {
+  margin-bottom: 0;
+}
+
+.task-modal__metrics-section .label {
+  display: flex;
+  align-items: center;
+  color: var(--success);
+}
+
+.task-modal__points-selector {
+  display: flex;
+  gap: 8px;
+}
+
+.task-modal__point-btn {
+  flex: 1;
+  padding: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  transition: all var(--transition-fast);
+}
+
+.task-modal__point-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.task-modal__point-btn--active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+.task-modal__people-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding: 16px;
+  background: var(--accent-light);
+  border-radius: var(--radius);
+  margin-bottom: 16px;
+}
+
+.task-modal__people-section .form-group {
+  margin-bottom: 0;
+}
+
+.task-modal__people-section .label {
+  display: flex;
+  align-items: center;
+  color: var(--accent);
+}
+
+.task-modal__block-section {
+  padding: 16px;
+  background: var(--bg-column);
+  border-radius: var(--radius);
+}
+
+.task-modal__block-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.task-modal__block-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.task-modal__block-icon {
+  color: var(--text-muted);
+}
+
+.task-modal__block-icon--active {
+  color: var(--danger);
+}
+
+.task-modal__block-fields {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.task-modal__block-fields .form-group:last-child {
+  margin-bottom: 0;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.task-modal__footer-right {
+  display: flex;
+  gap: 8px;
+}

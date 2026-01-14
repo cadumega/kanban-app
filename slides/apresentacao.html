@@ -1,0 +1,876 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Kanban App — Apresentação</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/theme/white.css" />
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+      
+      * {
+        font-family: 'Inter', sans-serif;
+      }
+
+      .reveal {
+        font-family: 'Inter', sans-serif;
+      }
+
+      .reveal h1 {
+        color: #6366F1;
+        font-weight: 700;
+        font-size: 3.5em;
+        margin-bottom: 0.5em;
+      }
+
+      .reveal h2 {
+        color: #6366F1;
+        font-weight: 700;
+        font-size: 2.5em;
+        margin-bottom: 0.8em;
+      }
+
+      .reveal h3 {
+        color: #4F46E5;
+        font-weight: 600;
+        font-size: 1.5em;
+        margin-top: 1em;
+        margin-bottom: 0.5em;
+      }
+
+      .reveal .slides section {
+        text-align: left;
+        padding: 2em;
+      }
+
+      .reveal .slides section.center {
+        text-align: center;
+      }
+
+      /* Cards visuais */
+      .card-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1.5em;
+        margin: 2em 0;
+      }
+
+      .card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 1.5em;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      }
+
+      .card h3 {
+        color: white;
+        margin-top: 0;
+        font-size: 1.3em;
+      }
+
+      .card-blue {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      }
+
+      .card-green {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+      }
+
+      .card-orange {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      }
+
+      .card-purple {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+      }
+
+      /* Infográfico de fluxo */
+      .flow-diagram {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin: 2em 0;
+        padding: 2em;
+        background: #f8f9fa;
+        border-radius: 12px;
+      }
+
+      .flow-step {
+        flex: 1;
+        text-align: center;
+        padding: 1em;
+      }
+
+      .flow-step .icon {
+        font-size: 3em;
+        margin-bottom: 0.5em;
+      }
+
+      .flow-arrow {
+        font-size: 2em;
+        color: #6366F1;
+        margin: 0 0.5em;
+      }
+
+      /* Backend diagram */
+      .backend-diagram {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 1.5em;
+        margin: 2em 0;
+      }
+
+      .backend-box {
+        background: white;
+        border: 3px solid #6366F1;
+        border-radius: 12px;
+        padding: 1.5em;
+        text-align: center;
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+      }
+
+      .backend-box h3 {
+        color: #6366F1;
+        margin-top: 0;
+      }
+
+      .backend-box .emoji {
+        font-size: 3em;
+        margin-bottom: 0.5em;
+      }
+
+      /* Stats grid */
+      .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.5em;
+        margin: 2em 0;
+      }
+
+      .stat-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 1.5em;
+        border-radius: 12px;
+        text-align: center;
+      }
+
+      .stat-number {
+        font-size: 3em;
+        font-weight: 700;
+        margin: 0.3em 0;
+      }
+
+      .stat-label {
+        font-size: 1.1em;
+        opacity: 0.9;
+      }
+
+      /* Feature list visual */
+      .feature-list {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1em;
+        margin: 1.5em 0;
+      }
+
+      .feature-item {
+        display: flex;
+        align-items: center;
+        padding: 1em;
+        background: #f8f9fa;
+        border-radius: 8px;
+        border-left: 4px solid #6366F1;
+      }
+
+      .feature-item .emoji {
+        font-size: 2em;
+        margin-right: 0.5em;
+      }
+
+      /* Persona card */
+      .persona-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2em;
+        border-radius: 12px;
+        margin: 1em 0;
+      }
+
+      .persona-card h3 {
+        color: white;
+        margin-top: 0;
+      }
+
+      /* Journey map */
+      .journey-steps {
+        display: flex;
+        justify-content: space-between;
+        margin: 2em 0;
+        position: relative;
+      }
+
+      .journey-step {
+        flex: 1;
+        text-align: center;
+        padding: 1em;
+        background: white;
+        border: 2px solid #6366F1;
+        border-radius: 8px;
+        margin: 0 0.5em;
+        position: relative;
+      }
+
+      .journey-step::after {
+        content: '→';
+        position: absolute;
+        right: -1.2em;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 2em;
+        color: #6366F1;
+      }
+
+      .journey-step:last-child::after {
+        display: none;
+      }
+
+      .journey-step .number {
+        background: #6366F1;
+        color: white;
+        width: 2em;
+        height: 2em;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 0.5em;
+        font-weight: 700;
+      }
+
+      /* Benefits visual */
+      .benefits-list {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1em;
+        margin: 1.5em 0;
+      }
+
+      .benefit-item {
+        display: flex;
+        align-items: start;
+        padding: 1em;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-radius: 8px;
+      }
+
+      .benefit-item .check {
+        color: #22C55E;
+        font-size: 1.5em;
+        margin-right: 0.5em;
+      }
+
+      /* Code block styling */
+      .code-snippet {
+        background: #1e1e1e;
+        color: #d4d4d4;
+        padding: 1.5em;
+        border-radius: 8px;
+        font-family: 'Courier New', monospace;
+        font-size: 0.9em;
+        margin: 1em 0;
+        overflow-x: auto;
+      }
+
+      .code-snippet .keyword { color: #569cd6; }
+      .code-snippet .string { color: #ce9178; }
+      .code-snippet .comment { color: #6a9955; }
+
+      /* Highlight box */
+      .highlight-box {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2em;
+        border-radius: 12px;
+        margin: 1.5em 0;
+        text-align: center;
+      }
+
+      .highlight-box h3 {
+        color: white;
+        margin-top: 0;
+      }
+
+      /* Comparison table */
+      .comparison {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5em;
+        margin: 2em 0;
+      }
+
+      .comparison-box {
+        padding: 1.5em;
+        border-radius: 8px;
+        border: 2px solid;
+      }
+
+      .comparison-box.frontend {
+        border-color: #6366F1;
+        background: rgba(99, 102, 241, 0.1);
+      }
+
+      .comparison-box.backend {
+        border-color: #10b981;
+        background: rgba(16, 185, 129, 0.1);
+      }
+
+      .comparison-box h3 {
+        margin-top: 0;
+      }
+
+      /* Icon grid */
+      .icon-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1em;
+        margin: 2em 0;
+      }
+
+      .icon-item {
+        text-align: center;
+        padding: 1em;
+        background: #f8f9fa;
+        border-radius: 8px;
+      }
+
+      .icon-item .emoji {
+        font-size: 3em;
+        margin-bottom: 0.5em;
+      }
+
+      ul {
+        margin-left: 1.5em;
+        line-height: 1.8;
+      }
+
+      .reveal code {
+        background: #f4f4f5;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-size: 0.9em;
+      }
+
+      /* Animations */
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      .reveal .slides section {
+        animation: fadeIn 0.5s ease-in;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="reveal">
+      <div class="slides">
+        <!-- Slide 1: Título -->
+        <section class="center">
+          <h1>📋 Kanban App</h1>
+          <p style="font-size: 1.5em; color: #64748b;">Sistema de gerenciamento de tarefas visual</p>
+          <p style="font-size: 1.2em; color: #94a3b8; margin-top: 1em;">Organize seu trabalho de forma simples e intuitiva</p>
+        </section>
+
+        <!-- Slide 2: O que é -->
+        <section>
+          <h2>O que é o Kanban App?</h2>
+          <div class="card-grid">
+            <div class="card card-blue">
+              <h3>📊 Visualização</h3>
+              <p>Veja todas as suas tarefas em um só lugar</p>
+            </div>
+            <div class="card card-green">
+              <h3>📁 Organização</h3>
+              <p>Colunas personalizadas (A fazer, Em andamento, Concluído)</p>
+            </div>
+            <div class="card card-orange">
+              <h3>🖱️ Drag & Drop</h3>
+              <p>Arraste tarefas entre colunas com o mouse</p>
+            </div>
+            <div class="card card-purple">
+              <h3>📈 Acompanhamento</h3>
+              <p>Monitore o progresso do seu trabalho</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Slide 3: Por que usar -->
+        <section>
+          <h2>Por que usar?</h2>
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-number">👁️</div>
+              <div class="stat-label">Organização Visual</div>
+              <p style="font-size: 0.9em; margin-top: 0.5em;">Veja o status de todas as tarefas de uma vez</p>
+            </div>
+            <div class="stat-card">
+              <div class="stat-number">🔄</div>
+              <div class="stat-label">Flexibilidade</div>
+              <p style="font-size: 0.9em; margin-top: 0.5em;">Mova tarefas facilmente entre estágios</p>
+            </div>
+            <div class="stat-card">
+              <div class="stat-number">🎯</div>
+              <div class="stat-label">Controle Total</div>
+              <p style="font-size: 0.9em; margin-top: 0.5em;">Priorize e categorize o que é importante</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Slide 4: Funcionalidades principais -->
+        <section>
+          <h2>Principais Funcionalidades</h2>
+          <div class="feature-list">
+            <div class="feature-item">
+              <span class="emoji">📋</span>
+              <div>
+                <strong>Organização por Colunas</strong><br>
+                <small>Crie colunas personalizadas para seu fluxo</small>
+              </div>
+            </div>
+            <div class="feature-item">
+              <span class="emoji">🎯</span>
+              <div>
+                <strong>Prioridades</strong><br>
+                <small>Alta, Média ou Baixa prioridade</small>
+              </div>
+            </div>
+            <div class="feature-item">
+              <span class="emoji">🏷️</span>
+              <div>
+                <strong>Categorias</strong><br>
+                <small>Organize com cores diferentes</small>
+              </div>
+            </div>
+            <div class="feature-item">
+              <span class="emoji">💰</span>
+              <div>
+                <strong>Valor e Pontos</strong><br>
+                <small>Valor financeiro e complexidade</small>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Slide 5: Funcionalidades avançadas -->
+        <section>
+          <h2>Funcionalidades Avançadas</h2>
+          <div class="icon-grid">
+            <div class="icon-item">
+              <div class="emoji">👥</div>
+              <strong>Responsáveis</strong>
+              <p style="font-size: 0.8em;">Defina quem é responsável</p>
+            </div>
+            <div class="icon-item">
+              <div class="emoji">📅</div>
+              <strong>Planejamento</strong>
+              <p style="font-size: 0.8em;">Associe a meses específicos</p>
+            </div>
+            <div class="icon-item">
+              <div class="emoji">🔒</div>
+              <strong>Bloqueios</strong>
+              <p style="font-size: 0.8em;">Marque e explique bloqueios</p>
+            </div>
+            <div class="icon-item">
+              <div class="emoji">📊</div>
+              <strong>Relatórios</strong>
+              <p style="font-size: 0.8em;">Estatísticas e exportação</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Slide 6: Design Thinking - Persona -->
+        <section>
+          <h2>👤 Para quem é feito?</h2>
+          <div class="persona-card">
+            <h3>Gerente de Projetos</h3>
+            <p><strong>Necessidade:</strong> Organizar tarefas da equipe e acompanhar progresso</p>
+            <p><strong>Benefício:</strong> Visão clara de todas as tarefas e quem está trabalhando em quê</p>
+          </div>
+          <div class="persona-card" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
+            <h3>Empreendedor</h3>
+            <p><strong>Necessidade:</strong> Planejar o mês e acompanhar valor financeiro</p>
+            <p><strong>Benefício:</strong> Controle de orçamento e planejamento mensal</p>
+          </div>
+        </section>
+
+        <!-- Slide 7: Jornada do Usuário -->
+        <section>
+          <h2>🗺️ Jornada do Usuário</h2>
+          <div class="journey-steps">
+            <div class="journey-step">
+              <div class="number">1</div>
+              <strong>Criar Colunas</strong>
+              <p style="font-size: 0.8em;">Organize seu fluxo de trabalho</p>
+            </div>
+            <div class="journey-step">
+              <div class="number">2</div>
+              <strong>Adicionar Tarefas</strong>
+              <p style="font-size: 0.8em;">Completo com detalhes</p>
+            </div>
+            <div class="journey-step">
+              <div class="number">3</div>
+              <strong>Mover Tarefas</strong>
+              <p style="font-size: 0.8em;">Arraste conforme avança</p>
+            </div>
+            <div class="journey-step">
+              <div class="number">4</div>
+              <strong>Filtrar</strong>
+              <p style="font-size: 0.8em;">Encontre rapidamente</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Slide 8: Como funciona - Fluxo -->
+        <section>
+          <h2>⚙️ Como Funciona na Prática</h2>
+          <div class="flow-diagram">
+            <div class="flow-step">
+              <div class="icon">📝</div>
+              <strong>Criar Colunas</strong>
+              <p style="font-size: 0.8em;">Ex: Planejamento, Desenvolvimento, Testes, Concluído</p>
+            </div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step">
+              <div class="icon">➕</div>
+              <strong>Adicionar Tarefas</strong>
+              <p style="font-size: 0.8em;">Título, descrição, prioridade, responsável...</p>
+            </div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step">
+              <div class="icon">🔄</div>
+              <strong>Mover Tarefas</strong>
+              <p style="font-size: 0.8em;">Arraste entre colunas conforme avança</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Slide 9: Backend - O que é -->
+        <section>
+          <h2>🔧 Como funciona por trás dos panos?</h2>
+          <div class="highlight-box">
+            <h3>O Backend: O "Cérebro" da Aplicação</h3>
+            <p style="font-size: 1.2em; margin-top: 1em;">
+              Imagine um restaurante: o <strong>Frontend</strong> é o salão onde você vê o cardápio e faz pedidos.<br>
+              O <strong>Backend</strong> é a cozinha onde tudo é preparado e armazenado.
+            </p>
+          </div>
+        </section>
+
+        <!-- Slide 10: Backend - Arquitetura -->
+        <section>
+          <h2>🏗️ Arquitetura do Sistema</h2>
+          <div class="backend-diagram">
+            <div class="backend-box">
+              <div class="emoji">🖥️</div>
+              <h3>Frontend</h3>
+              <p style="font-size: 0.9em;">Interface visual que você vê e usa</p>
+              <p style="font-size: 0.8em; color: #64748b; margin-top: 0.5em;">React + TypeScript</p>
+            </div>
+            <div class="backend-box">
+              <div class="emoji">⚙️</div>
+              <h3>Backend</h3>
+              <p style="font-size: 0.9em;">Processa pedidos e gerencia dados</p>
+              <p style="font-size: 0.8em; color: #64748b; margin-top: 0.5em;">Node.js + Express</p>
+            </div>
+            <div class="backend-box">
+              <div class="emoji">💾</div>
+              <h3>Banco de Dados</h3>
+              <p style="font-size: 0.9em;">Armazena todas as informações</p>
+              <p style="font-size: 0.8em; color: #64748b; margin-top: 0.5em;">SQLite</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Slide 11: Backend - Fluxo de comunicação -->
+        <section>
+          <h2>💬 Como eles conversam?</h2>
+          <div class="flow-diagram" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+            <div class="flow-step">
+              <div class="icon">👆</div>
+              <strong>Você clica</strong>
+              <p style="font-size: 0.8em;">"Criar Tarefa"</p>
+            </div>
+            <div class="flow-arrow" style="color: white;">→</div>
+            <div class="flow-step">
+              <div class="icon">📤</div>
+              <strong>Frontend envia</strong>
+              <p style="font-size: 0.8em;">Pedido HTTP com dados</p>
+            </div>
+            <div class="flow-arrow" style="color: white;">→</div>
+            <div class="flow-step">
+              <div class="icon">⚙️</div>
+              <strong>Backend processa</strong>
+              <p style="font-size: 0.8em;">Valida e salva</p>
+            </div>
+            <div class="flow-arrow" style="color: white;">→</div>
+            <div class="flow-step">
+              <div class="icon">💾</div>
+              <strong>Banco armazena</strong>
+              <p style="font-size: 0.8em;">Dados salvos</p>
+            </div>
+            <div class="flow-arrow" style="color: white;">→</div>
+            <div class="flow-step">
+              <div class="icon">✅</div>
+              <strong>Resposta</strong>
+              <p style="font-size: 0.8em;">Tela atualizada</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Slide 12: Backend - Node.js explicado -->
+        <section>
+          <h2>🟢 Node.js: O que é?</h2>
+          <div class="comparison">
+            <div class="comparison-box frontend">
+              <h3>🖥️ Frontend (React)</h3>
+              <p><strong>O que faz:</strong> Mostra a interface bonita</p>
+              <p><strong>Onde roda:</strong> No navegador do usuário</p>
+              <p><strong>Exemplo:</strong> Quando você vê os cards de tarefas</p>
+            </div>
+            <div class="comparison-box backend">
+              <h3>⚙️ Backend (Node.js)</h3>
+              <p><strong>O que faz:</strong> Processa pedidos e gerencia dados</p>
+              <p><strong>Onde roda:</strong> No servidor (sua máquina ou nuvem)</p>
+              <p><strong>Exemplo:</strong> Quando você cria uma tarefa, ele salva no banco</p>
+            </div>
+          </div>
+          <div class="highlight-box" style="margin-top: 1.5em;">
+            <p><strong>Node.js</strong> é como um garçom de restaurante: recebe os pedidos (do frontend) e leva para a cozinha (banco de dados), depois traz a resposta de volta!</p>
+          </div>
+        </section>
+
+        <!-- Slide 13: Backend - Estrutura -->
+        <section>
+          <h2>📁 Estrutura do Backend</h2>
+          <div class="code-snippet">
+<span class="comment">// Estrutura organizada em pastas:</span>
+
+<span class="keyword">backend/</span>
+  ├── <span class="string">index.js</span>          <span class="comment">← Servidor principal (o "garçom")</span>
+  ├── <span class="string">database/</span>
+  │   └── <span class="string">init.js</span>       <span class="comment">← Configura o banco de dados</span>
+  └── <span class="string">routes/</span>
+      ├── <span class="string">columns.js</span>     <span class="comment">← Cuida das colunas</span>
+      ├── <span class="string">tasks.js</span>       <span class="comment">← Cuida das tarefas</span>
+      └── <span class="string">categories.js</span>  <span class="comment">← Cuida das categorias</span>
+          </div>
+          <p style="margin-top: 1em;"><strong>Cada arquivo tem uma responsabilidade:</strong> organização clara e fácil de manter!</p>
+        </section>
+
+        <!-- Slide 14: Backend - Exemplo prático -->
+        <section>
+          <h2>💡 Exemplo Prático: Criar uma Tarefa</h2>
+          <div class="flow-diagram" style="flex-direction: column; background: #f8f9fa;">
+            <div style="display: flex; align-items: center; margin-bottom: 1em;">
+              <div style="flex: 1; padding: 1em; background: white; border-radius: 8px; margin-right: 1em;">
+                <strong>1. Você preenche o formulário</strong><br>
+                <small>Título: "Fazer relatório"<br>Prioridade: Alta</small>
+              </div>
+              <div style="font-size: 2em; color: #6366F1;">→</div>
+            </div>
+            <div style="display: flex; align-items: center; margin-bottom: 1em;">
+              <div style="flex: 1; padding: 1em; background: white; border-radius: 8px; margin-right: 1em;">
+                <strong>2. Frontend envia para o Backend</strong><br>
+                <small>POST /api/tasks<br>{ title: "Fazer relatório", priority: "alta" }</small>
+              </div>
+              <div style="font-size: 2em; color: #6366F1;">→</div>
+            </div>
+            <div style="display: flex; align-items: center; margin-bottom: 1em;">
+              <div style="flex: 1; padding: 1em; background: white; border-radius: 8px; margin-right: 1em;">
+                <strong>3. Backend (Node.js) recebe e processa</strong><br>
+                <small>Valida os dados, gera um ID único, prepara para salvar</small>
+              </div>
+              <div style="font-size: 2em; color: #6366F1;">→</div>
+            </div>
+            <div style="flex: 1; padding: 1em; background: white; border-radius: 8px;">
+              <strong>4. Banco de dados salva</strong><br>
+              <small>A tarefa fica armazenada permanentemente</small>
+            </div>
+          </div>
+        </section>
+
+        <!-- Slide 15: Backend - Ferramentas -->
+        <section>
+          <h2>🛠️ Ferramentas do Backend</h2>
+          <div class="card-grid">
+            <div class="card card-blue">
+              <h3>Express</h3>
+              <p>O "garçom" que recebe e direciona pedidos HTTP</p>
+            </div>
+            <div class="card card-green">
+              <h3>SQLite</h3>
+              <p>A "geladeira" que guarda todos os dados de forma segura</p>
+            </div>
+            <div class="card card-orange">
+              <h3>UUID</h3>
+              <p>Gera códigos únicos para cada tarefa (tipo RG)</p>
+            </div>
+            <div class="card card-purple">
+              <h3>CORS</h3>
+              <p>Permite que frontend e backend conversem sem bloqueios</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Slide 16: Benefícios -->
+        <section>
+          <h2>✅ Benefícios</h2>
+          <div class="benefits-list">
+            <div class="benefit-item">
+              <span class="check">✅</span>
+              <div>
+                <strong>Organização</strong>
+                <p style="font-size: 0.9em; margin: 0.3em 0 0 0;">Tudo em um só lugar</p>
+              </div>
+            </div>
+            <div class="benefit-item">
+              <span class="check">✅</span>
+              <div>
+                <strong>Clareza</strong>
+                <p style="font-size: 0.9em; margin: 0.3em 0 0 0;">Veja o status de cada tarefa</p>
+              </div>
+            </div>
+            <div class="benefit-item">
+              <span class="check">✅</span>
+              <div>
+                <strong>Eficiência</strong>
+                <p style="font-size: 0.9em; margin: 0.3em 0 0 0;">Menos tempo procurando</p>
+              </div>
+            </div>
+            <div class="benefit-item">
+              <span class="check">✅</span>
+              <div>
+                <strong>Controle</strong>
+                <p style="font-size: 0.9em; margin: 0.3em 0 0 0;">Priorize o importante</p>
+              </div>
+            </div>
+            <div class="benefit-item">
+              <span class="check">✅</span>
+              <div>
+                <strong>Relatórios</strong>
+                <p style="font-size: 0.9em; margin: 0.3em 0 0 0;">Acompanhe métricas</p>
+              </div>
+            </div>
+            <div class="benefit-item">
+              <span class="check">✅</span>
+              <div>
+                <strong>Backend Robusto</strong>
+                <p style="font-size: 0.9em; margin: 0.3em 0 0 0;">Node.js garante velocidade e confiabilidade</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Slide 17: Próximas melhorias -->
+        <section>
+          <h2>🚀 Próximas Melhorias</h2>
+          <div class="feature-list">
+            <div class="feature-item">
+              <span class="emoji">🔐</span>
+              <div>
+                <strong>Login de usuários</strong>
+                <p style="font-size: 0.8em; margin: 0.3em 0 0 0;">Cada pessoa com seu próprio espaço</p>
+              </div>
+            </div>
+            <div class="feature-item">
+              <span class="emoji">📊</span>
+              <div>
+                <strong>Múltiplos quadros</strong>
+                <p style="font-size: 0.8em; margin: 0.3em 0 0 0;">Diferentes projetos, diferentes boards</p>
+              </div>
+            </div>
+            <div class="feature-item">
+              <span class="emoji">👥</span>
+              <div>
+                <strong>Compartilhamento</strong>
+                <p style="font-size: 0.8em; margin: 0.3em 0 0 0;">Trabalhe em equipe</p>
+              </div>
+            </div>
+            <div class="feature-item">
+              <span class="emoji">🔔</span>
+              <div>
+                <strong>Notificações</strong>
+                <p style="font-size: 0.8em; margin: 0.3em 0 0 0;">Alertas de tarefas bloqueadas</p>
+              </div>
+            </div>
+            <div class="feature-item">
+              <span class="emoji">📎</span>
+              <div>
+                <strong>Anexos</strong>
+                <p style="font-size: 0.8em; margin: 0.3em 0 0 0;">Upload de arquivos</p>
+              </div>
+            </div>
+            <div class="feature-item">
+              <span class="emoji">✓</span>
+              <div>
+                <strong>Subtarefas</strong>
+                <p style="font-size: 0.8em; margin: 0.3em 0 0 0;">Checklists dentro das tarefas</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Slide 18: Como começar -->
+        <section>
+          <h2>🚀 Como Começar</h2>
+          <div class="journey-steps" style="flex-direction: column; gap: 1em;">
+            <div class="journey-step" style="width: 100%; margin: 0;">
+              <div class="number">1</div>
+              <strong>Abra a aplicação no navegador</strong>
+            </div>
+            <div class="journey-step" style="width: 100%; margin: 0;">
+              <div class="number">2</div>
+              <strong>Crie suas primeiras colunas</strong>
+            </div>
+            <div class="journey-step" style="width: 100%; margin: 0;">
+              <div class="number">3</div>
+              <strong>Adicione tarefas</strong>
+            </div>
+            <div class="journey-step" style="width: 100%; margin: 0;">
+              <div class="number">4</div>
+              <strong>Comece a organizar!</strong>
+            </div>
+          </div>
+        </section>
+
+        <!-- Slide 19: Final -->
+        <section class="center">
+          <h1>Obrigado! 🙏</h1>
+          <div style="margin-top: 2em;">
+            <p style="font-size: 1.5em; color: #6366F1; font-weight: 600;">Perguntas?</p>
+          </div>
+          <div style="margin-top: 3em; font-size: 1.2em; color: #64748b;">
+            <p>Kanban App</p>
+            <p style="font-size: 0.9em;">Sistema de gerenciamento de tarefas visual</p>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.js"></script>
+    <script>
+      Reveal.initialize({
+        hash: true,
+        transition: 'slide',
+        backgroundTransition: 'fade',
+        controls: true,
+        progress: true,
+        center: false,
+        touch: true
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Kanban App — Apresentação</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/theme/white.css" />
+    <style>
+      .reveal h1, .reveal h2, .reveal h3 {
+        color: #6366F1;
+      }
+      .reveal .slides section {
+        text-align: left;
+      }
+      .reveal .slides section.center {
+        text-align: center;
+      }
+      .reveal ul {
+        margin-left: 1.5em;
+      }
+      .reveal code {
+        background: #f4f4f5;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-size: 0.9em;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="reveal">
+      <div class="slides">
+        <section data-markdown="reveal.md" 
+                 data-separator="^---$" 
+                 data-separator-vertical="^--$"
+                 data-separator-notes="^Note:">
+        </section>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/markdown/markdown.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/highlight/highlight.js"></script>
+    <script>
+      Reveal.initialize({
+        hash: true,
+        plugins: [ RevealMarkdown, RevealHighlight ],
+        transition: 'slide',
+        backgroundTransition: 'fade'
+      });
+    </script>
+  </body>
+</html>
