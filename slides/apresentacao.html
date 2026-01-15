@@ -2,7 +2,7 @@
 <html lang="pt-BR">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Kanban App — Apresentação</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/theme/white.css" />
@@ -11,37 +11,55 @@
       
       * {
         font-family: 'Inter', sans-serif;
+        box-sizing: border-box;
       }
 
       .reveal {
         font-family: 'Inter', sans-serif;
       }
 
+      .reveal .slides {
+        width: 100% !important;
+        height: 100% !important;
+      }
+
+      .reveal .slides section {
+        width: 100% !important;
+        height: 100% !important;
+        top: 0 !important;
+        left: 0 !important;
+        margin: 0 !important;
+        padding: 1.5em !important;
+        transform: scale(1) !important;
+      }
+
       .reveal h1 {
         color: #6366F1;
         font-weight: 700;
-        font-size: 3.5em;
+        font-size: clamp(2em, 5vw, 3.5em);
         margin-bottom: 0.5em;
+        line-height: 1.2;
       }
 
       .reveal h2 {
         color: #6366F1;
         font-weight: 700;
-        font-size: 2.5em;
+        font-size: clamp(1.5em, 4vw, 2.5em);
         margin-bottom: 0.8em;
+        line-height: 1.3;
       }
 
       .reveal h3 {
         color: #4F46E5;
         font-weight: 600;
-        font-size: 1.5em;
+        font-size: clamp(1.1em, 2.5vw, 1.5em);
         margin-top: 1em;
         margin-bottom: 0.5em;
       }
 
-      .reveal .slides section {
-        text-align: left;
-        padding: 2em;
+      .reveal p {
+        font-size: clamp(0.9em, 1.5vw, 1.1em);
+        line-height: 1.6;
       }
 
       .reveal .slides section.center {
@@ -51,15 +69,21 @@
       /* Cards visuais */
       .card-grid {
         display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 1.5em;
-        margin: 2em 0;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1em;
+        margin: 1.5em 0;
+      }
+
+      @media (max-width: 768px) {
+        .card-grid {
+          grid-template-columns: 1fr;
+        }
       }
 
       .card {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
-        padding: 1.5em;
+        padding: clamp(1em, 2vw, 1.5em);
         border-radius: 12px;
         box-shadow: 0 4px 6px rgba(0,0,0,0.1);
       }
@@ -67,7 +91,11 @@
       .card h3 {
         color: white;
         margin-top: 0;
-        font-size: 1.3em;
+        font-size: clamp(1em, 2vw, 1.3em);
+      }
+
+      .card p {
+        font-size: clamp(0.85em, 1.3vw, 1em);
       }
 
       .card-blue {
@@ -91,42 +119,55 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        margin: 2em 0;
-        padding: 2em;
+        margin: 1.5em 0;
+        padding: clamp(1em, 2vw, 2em);
         background: #f8f9fa;
         border-radius: 12px;
+        flex-wrap: wrap;
+        gap: 0.5em;
       }
 
       .flow-step {
         flex: 1;
+        min-width: 120px;
         text-align: center;
-        padding: 1em;
+        padding: clamp(0.5em, 1vw, 1em);
       }
 
       .flow-step .icon {
-        font-size: 3em;
+        font-size: clamp(2em, 4vw, 3em);
         margin-bottom: 0.5em;
       }
 
       .flow-arrow {
-        font-size: 2em;
+        font-size: clamp(1.5em, 3vw, 2em);
         color: #6366F1;
-        margin: 0 0.5em;
+        margin: 0 0.3em;
+      }
+
+      @media (max-width: 768px) {
+        .flow-diagram {
+          flex-direction: column;
+        }
+        .flow-arrow {
+          transform: rotate(90deg);
+          margin: 0.5em 0;
+        }
       }
 
       /* Backend diagram */
       .backend-diagram {
         display: grid;
-        grid-template-columns: 1fr 1fr 1fr;
-        gap: 1.5em;
-        margin: 2em 0;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1em;
+        margin: 1.5em 0;
       }
 
       .backend-box {
         background: white;
         border: 3px solid #6366F1;
         border-radius: 12px;
-        padding: 1.5em;
+        padding: clamp(1em, 2vw, 1.5em);
         text-align: center;
         box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
       }
@@ -134,44 +175,49 @@
       .backend-box h3 {
         color: #6366F1;
         margin-top: 0;
+        font-size: clamp(1em, 2vw, 1.2em);
       }
 
       .backend-box .emoji {
-        font-size: 3em;
+        font-size: clamp(2em, 4vw, 3em);
         margin-bottom: 0.5em;
+      }
+
+      .backend-box p {
+        font-size: clamp(0.85em, 1.3vw, 0.95em);
       }
 
       /* Stats grid */
       .stats-grid {
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 1.5em;
-        margin: 2em 0;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1em;
+        margin: 1.5em 0;
       }
 
       .stat-card {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
-        padding: 1.5em;
+        padding: clamp(1em, 2vw, 1.5em);
         border-radius: 12px;
         text-align: center;
       }
 
       .stat-number {
-        font-size: 3em;
+        font-size: clamp(2em, 5vw, 3em);
         font-weight: 700;
         margin: 0.3em 0;
       }
 
       .stat-label {
-        font-size: 1.1em;
+        font-size: clamp(0.9em, 1.5vw, 1.1em);
         opacity: 0.9;
       }
 
       /* Feature list visual */
       .feature-list {
         display: grid;
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
         gap: 1em;
         margin: 1.5em 0;
       }
@@ -179,15 +225,22 @@
       .feature-item {
         display: flex;
         align-items: center;
-        padding: 1em;
+        padding: clamp(0.8em, 1.5vw, 1em);
         background: #f8f9fa;
         border-radius: 8px;
         border-left: 4px solid #6366F1;
       }
 
       .feature-item .emoji {
-        font-size: 2em;
+        font-size: clamp(1.5em, 3vw, 2em);
         margin-right: 0.5em;
+        flex-shrink: 0;
+      }
+
+      @media (max-width: 768px) {
+        .feature-list {
+          grid-template-columns: 1fr;
+        }
       }
 
       /* Persona card */
@@ -208,28 +261,31 @@
       .journey-steps {
         display: flex;
         justify-content: space-between;
-        margin: 2em 0;
+        margin: 1.5em 0;
         position: relative;
+        flex-wrap: wrap;
+        gap: 0.5em;
       }
 
       .journey-step {
         flex: 1;
+        min-width: 150px;
         text-align: center;
-        padding: 1em;
+        padding: clamp(0.8em, 1.5vw, 1em);
         background: white;
         border: 2px solid #6366F1;
         border-radius: 8px;
-        margin: 0 0.5em;
+        margin: 0 0.3em;
         position: relative;
       }
 
       .journey-step::after {
         content: '→';
         position: absolute;
-        right: -1.2em;
+        right: -1em;
         top: 50%;
         transform: translateY(-50%);
-        font-size: 2em;
+        font-size: clamp(1.5em, 3vw, 2em);
         color: #6366F1;
       }
 
@@ -240,14 +296,31 @@
       .journey-step .number {
         background: #6366F1;
         color: white;
-        width: 2em;
-        height: 2em;
+        width: clamp(1.8em, 3vw, 2em);
+        height: clamp(1.8em, 3vw, 2em);
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
         margin: 0 auto 0.5em;
         font-weight: 700;
+        font-size: clamp(0.9em, 1.5vw, 1em);
+      }
+
+      @media (max-width: 768px) {
+        .journey-steps {
+          flex-direction: column;
+        }
+        .journey-step {
+          width: 100%;
+          margin: 0.5em 0;
+        }
+        .journey-step::after {
+          transform: rotate(90deg);
+          right: 50%;
+          top: 100%;
+          margin-top: 0.3em;
+        }
       }
 
       /* Benefits visual */
@@ -334,21 +407,25 @@
       /* Icon grid */
       .icon-grid {
         display: grid;
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
         gap: 1em;
-        margin: 2em 0;
+        margin: 1.5em 0;
       }
 
       .icon-item {
         text-align: center;
-        padding: 1em;
+        padding: clamp(0.8em, 1.5vw, 1em);
         background: #f8f9fa;
         border-radius: 8px;
       }
 
       .icon-item .emoji {
-        font-size: 3em;
+        font-size: clamp(2em, 4vw, 3em);
         margin-bottom: 0.5em;
+      }
+
+      .icon-item strong {
+        font-size: clamp(0.85em, 1.3vw, 1em);
       }
 
       ul {
@@ -869,7 +946,12 @@
         controls: true,
         progress: true,
         center: false,
-        touch: true
+        touch: true,
+        width: '100%',
+        height: '100%',
+        margin: 0,
+        minScale: 0.2,
+        maxScale: 1.5
       });
     </script>
   </body>

@@ -1,125 +1,134 @@
-# Kanban App
+# Kanban App + Mini CRM
 
-Sistema de gerenciamento de tarefas estilo Kanban.
+Sistema de gerenciamento de tarefas estilo Kanban com CRM integrado.
 
----
-
-## Como Executar (Passo a Passo)
-
-### Pré-requisitos
-- Node.js instalado (v18 ou superior)
-- Terminal (iTerm, Terminal do Mac, etc.)
+**Repositório:** https://github.com/cadumega/kanban-app
 
 ---
 
-### Passo 1: Abrir o Terminal
-
-Abra o Terminal do Mac (Cmd + Espaço, digite "Terminal")
-
----
-
-### Passo 2: Navegar até a pasta do projeto
+## Início Rápido (1 comando)
 
 ```bash
 cd /Users/carlosmega/kanban-app
+./iniciar.sh
 ```
+
+Isso faz tudo automaticamente:
+- ✅ Backup dos dados
+- ✅ Inicia o backend
+- ✅ Inicia o frontend
+- ✅ Abre o navegador
 
 ---
 
-### Passo 3: Iniciar o Backend
+## Funcionalidades
 
+### Kanban
+- Drag & drop de tarefas
+- Priorização (Alta, Média, Baixa)
+- Categorias com cores
+- Valor monetário (R$/mês)
+- Pontos de complexidade (1, 3, 5, 7)
+- Bloqueio de tarefas
+- Filtros por pessoa, categoria, mês
+- Dark Mode
+- Exportação CSV/JSON
+
+### Mini CRM
+- Cadastro de contatos
+- Email, telefone (formatado), empresa, cargo
+- Histórico de notas por contato
+- Timeline de interações
+
+---
+
+## Onde ficam seus dados
+
+| O que | Caminho |
+|-------|---------|
+| **Banco de dados** | `backend/kanban.db` |
+| **Backups** | `~/kanban-backups/` |
+
+---
+
+## Comandos Úteis
+
+### Iniciar o app
 ```bash
-cd backend
+./iniciar.sh
+```
+
+### Fazer backup manual
+```bash
+./backup.sh
+```
+
+### Iniciar manualmente (2 terminais)
+
+**Terminal 1 - Backend:**
+```bash
+cd /Users/carlosmega/kanban-app/backend
 npm run dev
 ```
 
-Você verá: `Server running on http://localhost:3001`
-
-**Deixe este terminal aberto!**
-
----
-
-### Passo 4: Abrir OUTRO terminal (Cmd + T)
-
+**Terminal 2 - Frontend:**
 ```bash
 cd /Users/carlosmega/kanban-app/frontend
 npm run dev
 ```
 
-Você verá: `Local: http://localhost:5173/`
+**Acessar:** http://localhost:5173
 
 ---
 
-### Passo 5: Abrir no navegador
+## Parar os servidores
 
-Acesse: **http://localhost:5173**
-
----
-
-## Comando Rápido (Tudo de uma vez)
-
-Cole isso no terminal:
-
-```bash
-cd /Users/carlosmega/kanban-app && cd backend && npm run dev &
-sleep 2 && cd /Users/carlosmega/kanban-app/frontend && npm run dev &
-sleep 3 && open http://localhost:5173
-```
-
----
-
-## Parar os Servidores
-
-Para parar, pressione `Ctrl + C` em cada terminal.
-
-Ou mate todos de uma vez:
-
+Pressione `Ctrl+C` no terminal ou:
 ```bash
 pkill -f "node.*kanban"
 ```
 
 ---
 
-## Estrutura do Projeto
+## Tecnologias
+
+- **Frontend:** React 18, TypeScript, Vite, @dnd-kit
+- **Backend:** Node.js, Express, SQLite
+- **Ícones:** Lucide React
+
+---
+
+## Documentação
+
+- `PROJETO-DOCUMENTACAO.md` - Documentação técnica completa
+- `BACKEND-EXPLICADO.md` - Explicação didática do backend
+- `DEPLOY-EXPLICADO.md` - Como publicar online
+
+---
+
+## Estrutura
 
 ```
 kanban-app/
-├── backend/          # API Node.js + SQLite
-├── frontend/         # React + TypeScript
-├── README.md         # Este arquivo
-├── PROJETO-DOCUMENTACAO.md  # Documentação completa
-└── BACKEND-EXPLICADO.md     # Explicação do backend para iniciantes
+├── backend/           # API Node.js + SQLite
+│   ├── src/
+│   │   ├── database/  # Configuração do banco
+│   │   └── routes/    # Rotas da API
+│   └── kanban.db      # Banco de dados
+├── frontend/          # React + TypeScript
+│   └── src/
+│       ├── components/
+│       ├── hooks/
+│       ├── services/
+│       └── types/
+├── iniciar.sh         # Script para iniciar tudo
+├── backup.sh          # Script de backup
+└── README.md          # Este arquivo
 ```
 
 ---
 
-## Links Úteis
+## Links
 
-- **Aplicação**: http://localhost:5173
-- **API Backend**: http://localhost:3001/api
-- **Documentação**: Abra `PROJETO-DOCUMENTACAO.md`
-- **Entender o Backend**: Abra `BACKEND-EXPLICADO.md`
-
----
-
-## Abrir no Cursor
-
-```bash
-cursor /Users/carlosmega/kanban-app
-```
-
----
-
-## Problemas Comuns
-
-### "Porta já em uso"
-```bash
-lsof -ti:3001 | xargs kill -9
-lsof -ti:5173 | xargs kill -9
-```
-
-### "npm não encontrado"
-Instale o Node.js: https://nodejs.org
-
-### Tela branca
-Verifique se o backend está rodando (Passo 3)
+- **App local:** http://localhost:5173
+- **GitHub:** https://github.com/cadumega/kanban-app

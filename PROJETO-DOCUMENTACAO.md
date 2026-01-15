@@ -1,8 +1,10 @@
-# Kanban App - Documentação Completa
+# Kanban App + CRM - Documentação Completa
 
 ## Visão Geral
 
-Sistema de gerenciamento de tarefas estilo Kanban desenvolvido com React + TypeScript no frontend e Node.js + SQLite no backend.
+Sistema de gerenciamento de tarefas estilo Kanban com Mini CRM integrado. Desenvolvido com React + TypeScript no frontend e Node.js + SQLite no backend.
+
+**Repositório:** https://github.com/cadumega/kanban-app
 
 ---
 
@@ -31,12 +33,13 @@ Sistema de gerenciamento de tarefas estilo Kanban desenvolvido com React + TypeS
 kanban-app/
 ├── frontend/                    # Aplicação React
 │   ├── src/
-│   │   ├── components/          # Componentes React
+│   │   ├── components/
 │   │   │   ├── Board/           # Container principal do Kanban
 │   │   │   ├── Column/          # Coluna do board
 │   │   │   ├── TaskCard/        # Card de tarefa
-│   │   │   ├── TaskModal/       # Modal de edição
-│   │   │   └── Sidebar/         # Barra lateral com filtros
+│   │   │   ├── TaskModal/       # Modal de edição de tarefa
+│   │   │   ├── Sidebar/         # Barra lateral com filtros
+│   │   │   └── Contacts/        # Mini CRM (contatos)
 │   │   ├── hooks/
 │   │   │   └── useBoard.ts      # Hook principal de estado
 │   │   ├── services/
@@ -56,16 +59,23 @@ kanban-app/
 │   │   ├── routes/
 │   │   │   ├── columns.js       # CRUD de colunas
 │   │   │   ├── tasks.js         # CRUD de tarefas
-│   │   │   └── categories.js    # CRUD de categorias
+│   │   │   ├── categories.js    # CRUD de categorias
+│   │   │   └── contacts.js      # CRUD de contatos (CRM)
 │   │   └── index.js             # Server Express
+│   ├── kanban.db                # Banco de dados SQLite
 │   └── package.json
 │
-└── kanban.db                    # Banco de dados SQLite
+├── iniciar.sh                   # Script para iniciar o app
+├── backup.sh                    # Script de backup
+├── README.md                    # Guia rápido
+├── PROJETO-DOCUMENTACAO.md      # Este arquivo
+├── BACKEND-EXPLICADO.md         # Explicação didática
+└── DEPLOY-EXPLICADO.md          # Como publicar online
 ```
 
 ---
 
-## Modelo de Dados
+## Modelo de Dados (SQLite)
 
 ### Tabela: columns
 | Campo | Tipo | Descrição |
@@ -91,7 +101,7 @@ kanban-app/
 | dependent | TEXT | Quem depende desta tarefa |
 | value | REAL | Valor em R$/mês |
 | points | INTEGER | Pontos de complexidade (1,3,5,7) |
-| blocked | BOOLEAN | Se está bloqueada |
+| blocked | INTEGER | Se está bloqueada (0/1) |
 | blocked_by | TEXT | Nome de quem bloqueia |
 | blocked_reason | TEXT | Motivo do bloqueio |
 | created_at | DATETIME | Data de criação |
@@ -103,6 +113,26 @@ kanban-app/
 | id | TEXT (UUID) | Identificador único |
 | name | TEXT | Nome da categoria |
 | color | TEXT | Cor (hex) |
+
+### Tabela: contacts (CRM)
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| id | TEXT (UUID) | Identificador único |
+| name | TEXT | Nome do contato |
+| email | TEXT | Email |
+| phone | TEXT | Telefone |
+| company | TEXT | Empresa |
+| role | TEXT | Cargo/Função |
+| created_at | DATETIME | Data de criação |
+| updated_at | DATETIME | Última atualização |
+
+### Tabela: contact_notes (Histórico CRM)
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| id | TEXT (UUID) | Identificador único |
+| contact_id | TEXT | FK para contato |
+| content | TEXT | Conteúdo da nota |
+| created_at | DATETIME | Data de criação |
 
 ---
 
@@ -126,7 +156,6 @@ PUT    /api/tasks/:id/move   # Mover entre colunas
 PUT    /api/tasks/:id/block  # Bloquear/desbloquear
 GET    /api/tasks/export/json # Exportar JSON
 GET    /api/tasks/export/csv  # Exportar CSV
-GET    /api/tasks/report      # Relatório agregado
 ```
 
 ### Categorias
@@ -136,121 +165,122 @@ POST   /api/categories       # Criar categoria
 DELETE /api/categories/:id   # Excluir categoria
 ```
 
+### Contatos (CRM)
+```
+GET    /api/contacts         # Listar todos
+GET    /api/contacts/:id     # Detalhes + notas
+POST   /api/contacts         # Criar contato
+PUT    /api/contacts/:id     # Editar contato
+DELETE /api/contacts/:id     # Excluir contato
+POST   /api/contacts/:id/notes     # Adicionar nota
+DELETE /api/contacts/:id/notes/:noteId  # Excluir nota
+```
+
 ---
 
-## Funcionalidades Implementadas
+## Funcionalidades
 
-### 1. Board Kanban
+### Kanban Board
 - Drag and drop de tarefas entre colunas
 - Reordenação de tarefas dentro da coluna
 - Criação/edição/exclusão de colunas
 - Cores personalizadas por coluna
+- Contadores de valor (R$) e pontos por coluna
 
-### 2. Tarefas
+### Tarefas
 - CRUD completo
-- Priorização (Alta, Média, Baixa)
+- Priorização (Alta, Média, Baixa) com cores
 - Categorização com tags coloridas
 - Campo de valor monetário (R$/mês)
 - Pontos de complexidade (1, 3, 5, 7)
 - Responsável e Dependente
 - Mês opcional para planejamento
-- Status de bloqueio
+- Status de bloqueio com motivo
 
-### 3. Filtros (Sidebar)
+### Filtros (Sidebar)
 - Por prioridade
 - Por categoria
 - Por mês
 - Por pessoa (responsável/dependente)
 - Tarefas bloqueadas
+- Botão "Limpar todos os filtros"
 - Contadores em tempo real
 
-### 4. Interface
+### Interface
 - Design minimalista (estilo Notion/Linear)
 - Dark Mode
 - Toggle para ocultar sidebar
 - Área de drag expandida no card
-- Contadores de valor por coluna e geral
 
-### 5. Exportação
+### Exportação
 - JSON completo
 - CSV para Excel/Sheets
 
+### Mini CRM
+- Cadastro de contatos (nome, email, telefone, empresa, cargo)
+- Telefone formatado automaticamente (XX) XXXXX-XXXX
+- Histórico de notas por contato (timeline)
+- Contador de notas na lista
+
 ---
 
-## Componentes Principais
+## Scripts de Automação
 
-### Board.tsx
-Container principal que renderiza as colunas e gerencia o drag and drop.
+### iniciar.sh
+Inicia todo o sistema com um comando:
+- Faz backup automático
+- Inicia backend na porta 3001
+- Inicia frontend na porta 5173
+- Abre o navegador
 
-```tsx
-// Usa @dnd-kit para DnD
-<DndContext onDragEnd={handleDragEnd}>
-  <SortableContext items={columns}>
-    {columns.map(col => <Column key={col.id} />)}
-  </SortableContext>
-</DndContext>
+```bash
+./iniciar.sh
 ```
 
-### Column.tsx
-Representa uma coluna do Kanban com header editável e lista de tasks.
+### backup.sh
+Faz backup do banco de dados:
+- Salva em `~/kanban-backups/`
+- Nome com data/hora
+- Mantém últimos 10 backups
 
-```tsx
-// Mostra total de valor e pontos
-{totalValue > 0 && <span>{formatValue(totalValue)}</span>}
-{totalPoints > 0 && <span>{totalPoints} pts</span>}
-```
-
-### TaskCard.tsx
-Card de tarefa com área de drag, badges e indicadores visuais.
-
-```tsx
-// Área de drag expandida
-<div className="task-card__drag-area" {...listeners} />
-// Badges de prioridade, categoria, valor, pontos
-```
-
-### TaskModal.tsx
-Modal completo para criar/editar tarefas com todos os campos.
-
-```tsx
-// Seletor de pontos de complexidade
-{[1, 3, 5, 7].map(p => (
-  <button onClick={() => setPoints(p)}>{p}</button>
-))}
-```
-
-### Sidebar.tsx
-Barra lateral com filtros, estatísticas e ações.
-
-```tsx
-// Filtros por pessoa (ordem alfabética)
-{people.map(person => (
-  <button onClick={() => onFilterByPerson(person)}>
-    {person}
-  </button>
-))}
+```bash
+./backup.sh
 ```
 
 ---
 
-## Hook useBoard
+## Como Executar
 
-Gerencia todo o estado da aplicação:
-
-```tsx
-const {
-  columns,           // Lista de colunas com tarefas
-  categories,        // Lista de categorias
-  filters,           // Filtros ativos
-  setFilters,        // Atualizar filtros
-  getFilteredColumns,// Colunas filtradas
-  getStats,          // Estatísticas (total, valor, pontos)
-  addTask,           // Criar tarefa
-  updateTask,        // Atualizar tarefa
-  moveTask,          // Mover tarefa
-  // ... outros métodos
-} = useBoard();
+### Forma Fácil (1 comando)
+```bash
+cd /Users/carlosmega/kanban-app
+./iniciar.sh
 ```
+
+### Forma Manual (2 terminais)
+
+**Terminal 1 - Backend:**
+```bash
+cd /Users/carlosmega/kanban-app/backend
+npm run dev
+```
+
+**Terminal 2 - Frontend:**
+```bash
+cd /Users/carlosmega/kanban-app/frontend
+npm run dev
+```
+
+**Acessar:** http://localhost:5173
+
+---
+
+## Onde ficam os dados
+
+| O que | Caminho |
+|-------|---------|
+| Banco de dados | `backend/kanban.db` |
+| Backups | `~/kanban-backups/` |
 
 ---
 
@@ -284,34 +314,46 @@ const {
 
 ---
 
-## Como Executar
+## Componentes Principais
 
-### 1. Instalar dependências
-```bash
-# Backend
-cd kanban-app/backend
-npm install
+### Board.tsx
+Container principal que renderiza as colunas e gerencia o drag and drop com @dnd-kit.
 
-# Frontend
-cd kanban-app/frontend
-npm install
+### Column.tsx
+Coluna do Kanban com header editável, contador de tarefas, total de valor e pontos.
+
+### TaskCard.tsx
+Card de tarefa com área de drag expandida, badges de prioridade/categoria, valor e pontos.
+
+### TaskModal.tsx
+Modal para criar/editar tarefas com todos os campos, incluindo seletor de pontos (1,3,5,7).
+
+### Sidebar.tsx
+Barra lateral com filtros, estatísticas, dark mode toggle e botões de exportação.
+
+### ContactsPanel.tsx
+Painel de CRM com lista de contatos, formulário de edição e histórico de notas.
+
+---
+
+## Hook useBoard
+
+Gerencia todo o estado da aplicação Kanban:
+
+```tsx
+const {
+  columns,           // Lista de colunas com tarefas
+  categories,        // Lista de categorias
+  filters,           // Filtros ativos
+  setFilters,        // Atualizar filtros
+  getFilteredColumns,// Colunas filtradas
+  getStats,          // Estatísticas (total, valor, pontos)
+  addTask,           // Criar tarefa
+  updateTask,        // Atualizar tarefa
+  moveTask,          // Mover tarefa
+  // ... outros métodos
+} = useBoard();
 ```
-
-### 2. Iniciar servidores
-```bash
-# Terminal 1 - Backend
-cd kanban-app/backend
-npm run dev
-# Roda em http://localhost:3001
-
-# Terminal 2 - Frontend
-cd kanban-app/frontend
-npm run dev
-# Roda em http://localhost:5173
-```
-
-### 3. Acessar aplicação
-Abra http://localhost:5173 no navegador.
 
 ---
 
@@ -338,48 +380,4 @@ Abra http://localhost:5173 no navegador.
 
 ---
 
-## Próximos Passos Sugeridos
-
-1. **Autenticação** - Login de usuários
-2. **Multi-board** - Múltiplos boards por usuário
-3. **Colaboração** - Compartilhar boards
-4. **Notificações** - Alertas de tarefas bloqueadas
-5. **Histórico** - Log de alterações
-6. **Anexos** - Upload de arquivos
-7. **Subtarefas** - Checklist dentro das tarefas
-8. **Integração** - Conectar com calendário/email
-
----
-
-## Comandos Úteis
-
-```bash
-# Verificar tipos TypeScript
-cd frontend && npx tsc --noEmit
-
-# Build de produção
-cd frontend && npm run build
-
-# Resetar banco de dados
-rm backend/kanban.db
-# (será recriado ao iniciar o backend)
-```
-
----
-
-## Usando com Cursor
-
-1. Baixe o Cursor em https://cursor.com
-2. Abra a pasta `kanban-app`
-3. Use Cmd+K para fazer perguntas sobre o código
-4. Use Cmd+L para chat com contexto do projeto
-
-### Prompts úteis para o Cursor:
-- "Explique como funciona o drag and drop"
-- "Como adicionar um novo campo na tarefa"
-- "Como criar um novo filtro na sidebar"
-- "Refatore o componente TaskCard"
-
----
-
-*Documentação gerada em Janeiro/2026*
+*Documentação atualizada em Janeiro/2026*
