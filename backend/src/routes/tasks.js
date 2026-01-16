@@ -1,12 +1,12 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
-const db = require('../database/init');
 
 const router = express.Router();
 
 // Get all tasks with filters
 router.get('/', (req, res) => {
   try {
+    const db = req.db;
     const { category_id, priority, month, blocked } = req.query;
 
     let query = `
@@ -47,6 +47,7 @@ router.get('/', (req, res) => {
 // Create task
 router.post('/', (req, res) => {
   try {
+    const db = req.db;
     const {
       title,
       description = '',
@@ -58,6 +59,8 @@ router.post('/', (req, res) => {
       dependent = null,
       value = 0,
       points = 0,
+      start_date = null,
+      project = null,
       blocked = false,
       blocked_by = null,
       blocked_reason = null
@@ -75,9 +78,9 @@ router.post('/', (req, res) => {
 
     const id = uuidv4();
     db.prepare(`
-      INSERT INTO tasks (id, title, description, column_id, position, priority, category_id, month, assignee, dependent, value, points, blocked, blocked_by, blocked_reason)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(id, title, description, column_id, position, priority, category_id, month, assignee, dependent, value, points, blocked ? 1 : 0, blocked_by, blocked_reason);
+      INSERT INTO tasks (id, title, description, column_id, position, priority, category_id, month, assignee, dependent, value, points, start_date, project, blocked, blocked_by, blocked_reason)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(id, title, description, column_id, position, priority, category_id, month, assignee, dependent, value, points, start_date, project, blocked ? 1 : 0, blocked_by, blocked_reason);
 
     const task = db.prepare(`
       SELECT t.*, c.name as category_name, c.color as category_color
@@ -96,6 +99,7 @@ router.post('/', (req, res) => {
 // Update task
 router.put('/:id', (req, res) => {
   try {
+    const db = req.db;
     const { id } = req.params;
     const {
       title,
@@ -107,6 +111,8 @@ router.put('/:id', (req, res) => {
       dependent,
       value,
       points,
+      start_date,
+      project,
       blocked,
       blocked_by,
       blocked_reason
@@ -128,6 +134,8 @@ router.put('/:id', (req, res) => {
         dependent = ?,
         value = ?,
         points = ?,
+        start_date = ?,
+        project = ?,
         blocked = COALESCE(?, blocked),
         blocked_by = ?,
         blocked_reason = ?,
@@ -143,6 +151,8 @@ router.put('/:id', (req, res) => {
       dependent !== undefined ? dependent : existing.dependent,
       value !== undefined ? value : existing.value,
       points !== undefined ? points : existing.points,
+      start_date !== undefined ? start_date : existing.start_date,
+      project !== undefined ? project : existing.project,
       blocked !== undefined ? (blocked ? 1 : 0) : null,
       blocked_by !== undefined ? blocked_by : existing.blocked_by,
       blocked_reason !== undefined ? blocked_reason : existing.blocked_reason,
@@ -166,6 +176,7 @@ router.put('/:id', (req, res) => {
 // Move task (change column and/or position)
 router.put('/:id/move', (req, res) => {
   try {
+    const db = req.db;
     const { id } = req.params;
     const { column_id, position } = req.body;
 
@@ -231,6 +242,7 @@ router.put('/:id/move', (req, res) => {
 // Toggle block status
 router.put('/:id/block', (req, res) => {
   try {
+    const db = req.db;
     const { id } = req.params;
     const { blocked, blocked_by, blocked_reason } = req.body;
 
@@ -265,6 +277,7 @@ router.put('/:id/block', (req, res) => {
 // Delete task
 router.delete('/:id', (req, res) => {
   try {
+    const db = req.db;
     const { id } = req.params;
 
     const existing = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id);
@@ -290,6 +303,7 @@ router.delete('/:id', (req, res) => {
 // Export tasks as JSON
 router.get('/export/json', (req, res) => {
   try {
+    const db = req.db;
     const columns = db.prepare('SELECT * FROM columns ORDER BY position ASC').all();
     const tasks = db.prepare(`
       SELECT t.*, c.name as category_name, c.color as category_color, col.title as column_title
@@ -315,6 +329,7 @@ router.get('/export/json', (req, res) => {
 // Export tasks as CSV
 router.get('/export/csv', (req, res) => {
   try {
+    const db = req.db;
     const tasks = db.prepare(`
       SELECT
         t.title,
@@ -374,6 +389,7 @@ router.get('/export/csv', (req, res) => {
 // Get report/summary
 router.get('/report', (req, res) => {
   try {
+    const db = req.db;
     const columns = db.prepare('SELECT * FROM columns ORDER BY position ASC').all();
 
     // Tasks per column with totals
@@ -464,6 +480,109 @@ router.get('/report', (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Erro ao gerar relatório' });
+  }
+});
+
+// ==================== CHECKLIST (Subtarefas) ====================
+
+// Get checklist items for a task
+router.get('/:id/checklist', (req, res) => {
+  try {
+    const db = req.db;
+    const { id } = req.params;
+    const items = db.prepare(
+      'SELECT * FROM task_checklist WHERE task_id = ? ORDER BY position ASC'
+    ).all(id);
+    res.json(items);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Erro ao buscar checklist' });
+  }
+});
+
+// Add checklist item
+router.post('/:id/checklist', (req, res) => {
+  try {
+    const db = req.db;
+    const { id: taskId } = req.params;
+    const { text } = req.body;
+
+    if (!text?.trim()) {
+      return res.status(400).json({ error: 'Texto é obrigatório' });
+    }
+
+    // Get max position
+    const maxPos = db.prepare(
+      'SELECT MAX(position) as max FROM task_checklist WHERE task_id = ?'
+    ).get(taskId);
+    const position = (maxPos.max ?? -1) + 1;
+
+    const id = uuidv4();
+    db.prepare(
+      'INSERT INTO task_checklist (id, task_id, text, position) VALUES (?, ?, ?, ?)'
+    ).run(id, taskId, text.trim(), position);
+
+    const item = db.prepare('SELECT * FROM task_checklist WHERE id = ?').get(id);
+    res.status(201).json(item);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Erro ao adicionar item' });
+  }
+});
+
+// Toggle checklist item
+router.put('/:taskId/checklist/:itemId', (req, res) => {
+  try {
+    const db = req.db;
+    const { itemId } = req.params;
+    const { completed, text } = req.body;
+
+    const existing = db.prepare('SELECT * FROM task_checklist WHERE id = ?').get(itemId);
+    if (!existing) {
+      return res.status(404).json({ error: 'Item não encontrado' });
+    }
+
+    if (completed !== undefined) {
+      db.prepare('UPDATE task_checklist SET completed = ? WHERE id = ?')
+        .run(completed ? 1 : 0, itemId);
+    }
+
+    if (text !== undefined) {
+      db.prepare('UPDATE task_checklist SET text = ? WHERE id = ?')
+        .run(text.trim(), itemId);
+    }
+
+    const item = db.prepare('SELECT * FROM task_checklist WHERE id = ?').get(itemId);
+    res.json(item);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Erro ao atualizar item' });
+  }
+});
+
+// Delete checklist item
+router.delete('/:taskId/checklist/:itemId', (req, res) => {
+  try {
+    const db = req.db;
+    const { itemId } = req.params;
+
+    const existing = db.prepare('SELECT * FROM task_checklist WHERE id = ?').get(itemId);
+    if (!existing) {
+      return res.status(404).json({ error: 'Item não encontrado' });
+    }
+
+    db.prepare('DELETE FROM task_checklist WHERE id = ?').run(itemId);
+
+    // Reorder remaining items
+    db.prepare(`
+      UPDATE task_checklist SET position = position - 1
+      WHERE task_id = ? AND position > ?
+    `).run(existing.task_id, existing.position);
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Erro ao excluir item' });
   }
 });
 

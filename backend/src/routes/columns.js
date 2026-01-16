@@ -1,12 +1,12 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
-const db = require('../database/init');
 
 const router = express.Router();
 
 // Get all columns with their tasks
 router.get('/', (req, res) => {
   try {
+    const db = req.db;
     const columns = db.prepare(`
       SELECT * FROM columns ORDER BY position ASC
     `).all();
@@ -18,9 +18,29 @@ router.get('/', (req, res) => {
       ORDER BY t.position ASC
     `).all();
 
+    // Get checklist counts for each task
+    const checklistCounts = db.prepare(`
+      SELECT task_id,
+        COUNT(*) as checklist_total,
+        SUM(CASE WHEN completed = 1 THEN 1 ELSE 0 END) as checklist_completed
+      FROM task_checklist
+      GROUP BY task_id
+    `).all();
+
+    const checklistMap = new Map(checklistCounts.map(c => [c.task_id, c]));
+
+    const tasksWithChecklist = tasks.map(task => {
+      const cl = checklistMap.get(task.id);
+      return {
+        ...task,
+        checklist_total: cl?.checklist_total || 0,
+        checklist_completed: cl?.checklist_completed || 0
+      };
+    });
+
     const columnsWithTasks = columns.map(col => ({
       ...col,
-      tasks: tasks.filter(task => task.column_id === col.id)
+      tasks: tasksWithChecklist.filter(task => task.column_id === col.id)
     }));
 
     res.json(columnsWithTasks);
@@ -33,6 +53,7 @@ router.get('/', (req, res) => {
 // Create column
 router.post('/', (req, res) => {
   try {
+    const db = req.db;
     const { title, color = '#6366F1' } = req.body;
 
     if (!title) {
@@ -58,6 +79,7 @@ router.post('/', (req, res) => {
 // Update column
 router.put('/:id', (req, res) => {
   try {
+    const db = req.db;
     const { id } = req.params;
     const { title, color } = req.body;
 
@@ -84,6 +106,7 @@ router.put('/:id', (req, res) => {
 // Reorder columns
 router.put('/reorder/batch', (req, res) => {
   try {
+    const db = req.db;
     const { columns } = req.body;
 
     if (!Array.isArray(columns)) {
@@ -109,6 +132,7 @@ router.put('/reorder/batch', (req, res) => {
 // Delete column
 router.delete('/:id', (req, res) => {
   try {
+    const db = req.db;
     const { id } = req.params;
 
     const existing = db.prepare('SELECT * FROM columns WHERE id = ?').get(id);

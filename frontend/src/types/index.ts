@@ -21,9 +21,13 @@ export interface Task {
   dependent: string | null;
   value: number;
   points: number;
+  start_date: string | null;
+  project: string | null;
   blocked: number;
   blocked_by: string | null;
   blocked_reason: string | null;
+  checklist_total?: number;
+  checklist_completed?: number;
   created_at: string;
   updated_at: string;
 }
@@ -43,6 +47,7 @@ export interface Filters {
   month: string | null;
   blocked: boolean | null;
   person?: string | null;
+  project?: string | null;
 }
 
 export interface CreateTaskPayload {
@@ -56,6 +61,8 @@ export interface CreateTaskPayload {
   dependent?: string | null;
   value?: number;
   points?: number;
+  start_date?: string | null;
+  project?: string | null;
   blocked?: boolean;
   blocked_by?: string | null;
   blocked_reason?: string | null;
@@ -88,6 +95,54 @@ export interface Contact {
 export interface ContactNote {
   id: string;
   contact_id: string;
-  content: string;
+  content: string | null;
+  image_path: string | null;
   created_at: string;
+}
+
+export interface ChecklistItem {
+  id: string;
+  task_id: string;
+  text: string;
+  completed: number;
+  position: number;
+  created_at: string;
+}
+
+// Auth Types
+export type UserRole = 'master' | 'user';
+
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  role: UserRole;
+  active?: number;
+  created_at?: string;
+}
+
+export interface LoginResponse {
+  token: string;
+  user: User;
+}
+
+// Roadmap Types
+export type ProjectStatus = 'planning' | 'active' | 'paused' | 'completed';
+
+export interface Project {
+  id: string;
+  name: string;
+  description: string;
+  color: string;
+  status: ProjectStatus;
+  start_date: string | null;
+  end_date: string | null;
+  task_count?: number;
+  completed_tasks?: number;
+  total_value?: number;
+  total_points?: number;
+  calculated_start?: string | null;
+  calculated_end?: string | null;
+  created_at: string;
+  updated_at: string;
 }

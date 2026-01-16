@@ -68,6 +68,33 @@ db.exec(`
   );
 
   CREATE INDEX IF NOT EXISTS idx_contact_notes_contact ON contact_notes(contact_id);
+
+  CREATE TABLE IF NOT EXISTS task_checklist (
+    id TEXT PRIMARY KEY,
+    task_id TEXT NOT NULL,
+    text TEXT NOT NULL,
+    completed INTEGER DEFAULT 0,
+    position INTEGER NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_task_checklist_task ON task_checklist(task_id);
+
+  CREATE TABLE IF NOT EXISTS projects (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
+    description TEXT DEFAULT '',
+    color TEXT DEFAULT '#6366F1',
+    status TEXT DEFAULT 'active' CHECK(status IN ('planning', 'active', 'paused', 'completed')),
+    start_date TEXT,
+    end_date TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_projects_status ON projects(status);
+  CREATE INDEX IF NOT EXISTS idx_tasks_project ON tasks(project);
 `);
 
 // Migration: Add new columns if they don't exist
@@ -87,6 +114,26 @@ try {
   db.exec(`ALTER TABLE tasks ADD COLUMN points INTEGER DEFAULT 0`);
 } catch (e) { /* Column already exists */ }
 
+try {
+  db.exec(`ALTER TABLE tasks ADD COLUMN start_date TEXT`);
+} catch (e) { /* Column already exists */ }
+
+try {
+  db.exec(`ALTER TABLE tasks ADD COLUMN project TEXT`);
+} catch (e) { /* Column already exists */ }
+
+// Add Suporte column if it doesn't exist
+const suporteExists = db.prepare("SELECT COUNT(*) as count FROM columns WHERE title = 'Suporte'").get();
+if (suporteExists.count === 0) {
+  const maxPos = db.prepare('SELECT MAX(position) as max FROM columns').get();
+  const position = (maxPos.max ?? -1) + 1;
+  const { v4: uuidv4 } = require('uuid');
+  db.prepare('INSERT INTO columns (id, title, position, color) VALUES (?, ?, ?, ?)').run(
+    uuidv4(), 'Suporte', position, '#8B5CF6'
+  );
+  console.log('Suporte column created');
+}
+
 // Seed default columns if empty
 const columnCount = db.prepare('SELECT COUNT(*) as count FROM columns').get();
 if (columnCount.count === 0) {
@@ -94,7 +141,8 @@ if (columnCount.count === 0) {
     { title: 'Backlog', color: '#71717A' },
     { title: 'A Fazer', color: '#6366F1' },
     { title: 'Em Progresso', color: '#F59E0B' },
-    { title: 'Concluído', color: '#22C55E' }
+    { title: 'Concluído', color: '#22C55E' },
+    { title: 'Suporte', color: '#8B5CF6' }
   ];
 
   const insertColumn = db.prepare(

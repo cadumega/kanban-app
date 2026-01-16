@@ -39,7 +39,8 @@ kanban-app/
 │   │   │   ├── TaskCard/        # Card de tarefa
 │   │   │   ├── TaskModal/       # Modal de edição de tarefa
 │   │   │   ├── Sidebar/         # Barra lateral com filtros
-│   │   │   └── Contacts/        # Mini CRM (contatos)
+│   │   │   ├── Contacts/        # Mini CRM (contatos)
+│   │   │   └── Roadmap/         # Business Roadmap (timeline)
 │   │   ├── hooks/
 │   │   │   └── useBoard.ts      # Hook principal de estado
 │   │   ├── services/
@@ -60,7 +61,8 @@ kanban-app/
 │   │   │   ├── columns.js       # CRUD de colunas
 │   │   │   ├── tasks.js         # CRUD de tarefas
 │   │   │   ├── categories.js    # CRUD de categorias
-│   │   │   └── contacts.js      # CRUD de contatos (CRM)
+│   │   │   ├── contacts.js      # CRUD de contatos (CRM)
+│   │   │   └── projects.js      # Roadmap e projetos
 │   │   └── index.js             # Server Express
 │   ├── kanban.db                # Banco de dados SQLite
 │   └── package.json
@@ -101,11 +103,23 @@ kanban-app/
 | dependent | TEXT | Quem depende desta tarefa |
 | value | REAL | Valor em R$/mês |
 | points | INTEGER | Pontos de complexidade (1,3,5,7) |
+| start_date | TEXT | Data de início para cálculo de deadline |
+| **project** | TEXT | Nome do projeto associado |
 | blocked | INTEGER | Se está bloqueada (0/1) |
 | blocked_by | TEXT | Nome de quem bloqueia |
 | blocked_reason | TEXT | Motivo do bloqueio |
 | created_at | DATETIME | Data de criação |
 | updated_at | DATETIME | Última atualização |
+
+### Tabela: task_checklist (Subtarefas)
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| id | TEXT (UUID) | Identificador único |
+| task_id | TEXT | FK para tarefa |
+| text | TEXT | Texto da subtarefa |
+| completed | INTEGER | Se está concluída (0/1) |
+| position | INTEGER | Ordem na lista |
+| created_at | DATETIME | Data de criação |
 
 ### Tabela: categories
 | Campo | Tipo | Descrição |
@@ -134,6 +148,19 @@ kanban-app/
 | content | TEXT | Conteúdo da nota |
 | created_at | DATETIME | Data de criação |
 
+### Tabela: projects (Roadmap)
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| id | TEXT (UUID) | Identificador único |
+| name | TEXT | Nome do projeto (único) |
+| description | TEXT | Descrição do projeto |
+| color | TEXT | Cor (hex) |
+| status | TEXT | planning/active/paused/completed |
+| start_date | TEXT | Data de início |
+| end_date | TEXT | Data de término prevista |
+| created_at | DATETIME | Data de criação |
+| updated_at | DATETIME | Última atualização |
+
 ---
 
 ## API Endpoints
@@ -156,6 +183,15 @@ PUT    /api/tasks/:id/move   # Mover entre colunas
 PUT    /api/tasks/:id/block  # Bloquear/desbloquear
 GET    /api/tasks/export/json # Exportar JSON
 GET    /api/tasks/export/csv  # Exportar CSV
+GET    /api/tasks/report      # Relatório/resumo
+```
+
+### Checklist (Subtarefas)
+```
+GET    /api/tasks/:id/checklist           # Listar itens
+POST   /api/tasks/:id/checklist           # Adicionar item
+PUT    /api/tasks/:taskId/checklist/:itemId  # Atualizar item
+DELETE /api/tasks/:taskId/checklist/:itemId  # Excluir item
 ```
 
 ### Categorias
@@ -176,6 +212,16 @@ POST   /api/contacts/:id/notes     # Adicionar nota
 DELETE /api/contacts/:id/notes/:noteId  # Excluir nota
 ```
 
+### Projetos (Roadmap)
+```
+GET    /api/projects              # Listar todos (com contagem de tarefas)
+GET    /api/projects/:id          # Detalhes + tarefas do projeto
+GET    /api/projects/roadmap/timeline  # Dados para timeline (tarefas agrupadas)
+POST   /api/projects              # Criar projeto
+PUT    /api/projects/:id          # Editar projeto
+DELETE /api/projects/:id          # Excluir projeto
+```
+
 ---
 
 ## Funcionalidades
@@ -186,20 +232,28 @@ DELETE /api/contacts/:id/notes/:noteId  # Excluir nota
 - Criação/edição/exclusão de colunas
 - Cores personalizadas por coluna
 - Contadores de valor (R$) e pontos por coluna
+- **Coluna Suporte**: Coluna especial com divisores visuais a cada 3 tarefas
+- **Divisores por mês**: Na coluna "Concluído", tarefas são agrupadas por mês
 
 ### Tarefas
 - CRUD completo
 - Priorização (Alta, Média, Baixa) com cores
 - Categorização com tags coloridas
+- **Campo de Projeto**: Associe tarefas a projetos (badge roxo destacado)
+- **Subtarefas/Checklist**: Adicione itens de checklist com progresso visual
 - Campo de valor monetário (R$/mês)
 - Pontos de complexidade (1, 3, 5, 7)
+- **Deadline automático**: Data de início + pontos = deadline (pontos = dias)
+- Indicador visual de prazo no card (verde/amarelo/vermelho)
 - Responsável e Dependente
 - Mês opcional para planejamento
 - Status de bloqueio com motivo
+- Descrição visível apenas no modal (cards compactos)
 
 ### Filtros (Sidebar)
 - Por prioridade
 - Por categoria
+- **Por projeto**
 - Por mês
 - Por pessoa (responsável/dependente)
 - Tarefas bloqueadas
@@ -211,6 +265,7 @@ DELETE /api/contacts/:id/notes/:noteId  # Excluir nota
 - Dark Mode
 - Toggle para ocultar sidebar
 - Área de drag expandida no card
+- Modal de edição ampliado (1100px) com layout em grid
 
 ### Exportação
 - JSON completo
@@ -222,13 +277,27 @@ DELETE /api/contacts/:id/notes/:noteId  # Excluir nota
 - Histórico de notas por contato (timeline)
 - Contador de notas na lista
 
+### Business Roadmap
+- **Timeline visual** de projetos com navegação por período
+- Tarefas agrupadas por projeto (expansível/recolhível)
+- **Divisão de 10 dias**: Cada mês dividido em 3 blocos (1-10, 11-20, 21+)
+- Barras de duração calculadas automaticamente:
+  - **Início**: Campo `start_date` da tarefa
+  - **Fim**: Se concluída, usa `updated_at`; senão usa `start_date + points` (dias)
+- **Indicadores visuais**:
+  - Barra verde = tarefa concluída
+  - Barra colorida = em andamento
+  - Traço fino = duração ≤10 dias
+- Linha vermelha indicando "Hoje"
+- 6 meses visíveis com navegação anterior/próximo
+- Projetos derivados automaticamente do campo `project` das tarefas
+
 ---
 
 ## Scripts de Automação
 
 ### iniciar.sh
 Inicia todo o sistema com um comando:
-- Faz backup automático
 - Inicia backend na porta 3001
 - Inicia frontend na porta 5173
 - Abre o navegador
@@ -323,16 +392,25 @@ Container principal que renderiza as colunas e gerencia o drag and drop com @dnd
 Coluna do Kanban com header editável, contador de tarefas, total de valor e pontos.
 
 ### TaskCard.tsx
-Card de tarefa com área de drag expandida, badges de prioridade/categoria, valor e pontos.
+Card de tarefa com área de drag expandida, badges de prioridade/categoria, valor, pontos e indicador de deadline com cores (verde = ok, amarelo = próximo, vermelho = atrasado).
 
 ### TaskModal.tsx
-Modal para criar/editar tarefas com todos os campos, incluindo seletor de pontos (1,3,5,7).
+Modal para criar/editar tarefas com todos os campos, incluindo seletor de pontos (1,3,5,7) e campo de data de início para cálculo automático de deadline.
 
 ### Sidebar.tsx
 Barra lateral com filtros, estatísticas, dark mode toggle e botões de exportação.
 
 ### ContactsPanel.tsx
 Painel de CRM com lista de contatos, formulário de edição e histórico de notas.
+
+### RoadmapPanel.tsx
+Painel de Business Roadmap com:
+- Timeline horizontal com meses divididos em blocos de 10 dias
+- Projetos como grupos expansíveis
+- Tarefas como barras de duração
+- Navegação temporal (anterior/próximo)
+- Indicador "Hoje" como linha vermelha
+- Legenda de status
 
 ---
 

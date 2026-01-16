@@ -490,6 +490,24 @@ input, textarea, select {
   font-weight: 600;
 }
 
+/* Checklist Badge */
+.checklist-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  background: var(--bg-column);
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.checklist-badge--done {
+  background: var(--success-light);
+  color: var(--success);
+}
+
 /* Dropdown Menu */
 .dropdown {
   position: relative;

@@ -288,9 +288,64 @@
   margin-bottom: 16px;
 }
 
-.contacts-panel__notes-input textarea {
+.contacts-panel__notes-input-wrapper {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.contacts-panel__notes-input textarea {
   resize: none;
+  width: 100%;
+}
+
+.contacts-panel__notes-input-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.contacts-panel__image-btn {
+  cursor: pointer;
+  padding: 8px !important;
+}
+
+.contacts-panel__image-btn:hover {
+  color: var(--accent);
+}
+
+.contacts-panel__image-preview {
+  position: relative;
+  display: inline-block;
+  max-width: 200px;
+}
+
+.contacts-panel__image-preview img {
+  max-width: 100%;
+  max-height: 120px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+
+.contacts-panel__image-preview-remove {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--danger);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: 2px solid var(--bg-secondary);
+}
+
+.contacts-panel__image-preview-remove:hover {
+  transform: scale(1.1);
 }
 
 .contacts-panel__notes-list {
@@ -341,9 +396,84 @@
   line-height: 1.5;
 }
 
+.contacts-panel__note-image {
+  margin-top: 8px;
+}
+
+.contacts-panel__note-image img {
+  max-width: 100%;
+  max-height: 300px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: opacity var(--transition-fast);
+}
+
+.contacts-panel__note-image img:hover {
+  opacity: 0.9;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 .contacts-panel__notes-empty {
   text-align: center;
   color: var(--text-muted);
   font-size: 13px;
   padding: 20px;
+}
+
+/* Telefone com botões */
+.contacts-panel__info-card--phone {
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.contacts-panel__phone-number {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 14px;
+  letter-spacing: 0.5px;
+}
+
+.contacts-panel__phone-actions {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.contacts-panel__phone-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius);
+  background: var(--bg-secondary);
+  color: var(--accent);
+  text-decoration: none;
+  transition: all var(--transition-fast);
+  border: 1px solid var(--border);
+}
+
+.contacts-panel__phone-btn:hover {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+  transform: scale(1.05);
+}
+
+.contacts-panel__phone-btn--whatsapp {
+  color: #25D366;
+}
+
+.contacts-panel__phone-btn--whatsapp:hover {
+  background: #25D366;
+  color: white;
+  border-color: #25D366;
 }

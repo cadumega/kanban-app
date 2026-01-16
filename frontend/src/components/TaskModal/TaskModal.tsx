@@ -1,7 +1,57 @@
-import { useState, useEffect } from 'react';
-import { X, Trash2, Lock, Unlock, User, Users, DollarSign, Clock } from 'lucide-react';
-import type { Task, Category, Priority, CreateTaskPayload } from '../../types';
+import { useState, useEffect, useRef } from 'react';
+import { X, Trash2, Lock, Unlock, User, Users, Clock, CalendarClock, Plus, Check, ListTodo, FolderKanban, ExternalLink, Edit3, Eye } from 'lucide-react';
+import type { Task, Category, Priority, CreateTaskPayload, ChecklistItem } from '../../types';
+import * as api from '../../services/api';
 import './TaskModal.css';
+
+// Componente para renderizar texto com links clicáveis
+function RichTextPreview({ text }: { text: string }) {
+  if (!text) return <span className="task-modal__description-empty">Sem descrição</span>;
+
+  // Regex para detectar URLs
+  const urlRegex = /(https?:\/\/[^\s<]+[^<.,:;"')\]\s])/g;
+
+  const parts = text.split(urlRegex);
+
+  return (
+    <div className="task-modal__description-preview">
+      {parts.map((part, index) => {
+        if (urlRegex.test(part)) {
+          // Resetar regex lastIndex
+          urlRegex.lastIndex = 0;
+          // Extrair domínio para mostrar
+          let displayUrl = part;
+          try {
+            const url = new URL(part);
+            displayUrl = url.hostname + (url.pathname !== '/' ? url.pathname.slice(0, 30) + (url.pathname.length > 30 ? '...' : '') : '');
+          } catch {
+            displayUrl = part.slice(0, 50) + (part.length > 50 ? '...' : '');
+          }
+          return (
+            <a
+              key={index}
+              href={part}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="task-modal__description-link"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <ExternalLink size={12} />
+              {displayUrl}
+            </a>
+          );
+        }
+        // Preservar quebras de linha
+        return part.split('\n').map((line, lineIdx) => (
+          <span key={`${index}-${lineIdx}`}>
+            {lineIdx > 0 && <br />}
+            {line}
+          </span>
+        ));
+      })}
+    </div>
+  );
+}
 
 interface TaskModalProps {
   task: Task | null;
@@ -33,9 +83,19 @@ export function TaskModal({
   const [dependent, setDependent] = useState('');
   const [value, setValue] = useState<number>(0);
   const [points, setPoints] = useState<number>(0);
+  const [startDate, setStartDate] = useState<string>('');
+  const [project, setProject] = useState('');
   const [isBlocked, setIsBlocked] = useState(false);
   const [blockedBy, setBlockedBy] = useState('');
   const [blockedReason, setBlockedReason] = useState('');
+
+  // Checklist state
+  const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
+  const [newItemText, setNewItemText] = useState('');
+  const newItemInputRef = useRef<HTMLInputElement>(null);
+
+  // Description edit mode
+  const [isEditingDescription, setIsEditingDescription] = useState(false);
 
   useEffect(() => {
     if (task) {
@@ -48,9 +108,14 @@ export function TaskModal({
       setDependent(task.dependent || '');
       setValue(task.value || 0);
       setPoints(task.points || 0);
+      setStartDate(task.start_date || '');
+      setProject(task.project || '');
       setIsBlocked(Boolean(task.blocked));
       setBlockedBy(task.blocked_by || '');
       setBlockedReason(task.blocked_reason || '');
+      setIsEditingDescription(false); // Start in preview mode for existing tasks
+      // Load checklist
+      loadChecklist(task.id);
     } else {
       // Reset for new task
       setTitle('');
@@ -62,16 +127,27 @@ export function TaskModal({
       setDependent('');
       setValue(0);
       setPoints(0);
+      setStartDate('');
+      setProject('');
       setIsBlocked(false);
       setBlockedBy('');
       setBlockedReason('');
+      setChecklist([]);
+      setIsEditingDescription(true); // Start in edit mode for new tasks
     }
   }, [task]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const loadChecklist = async (taskId: string) => {
+    try {
+      const items = await api.getChecklist(taskId);
+      setChecklist(items);
+    } catch (err) {
+      console.error('Erro ao carregar checklist:', err);
+    }
+  };
 
-    if (!title.trim()) return;
+  const handleSave = () => {
+    if (!title.trim()) return false;
 
     if (task) {
       onUpdate(task.id, {
@@ -84,6 +160,8 @@ export function TaskModal({
         dependent: dependent.trim() || null,
         value,
         points,
+        start_date: startDate || null,
+        project: project.trim() || null,
       });
 
       // Handle block status separately
@@ -104,12 +182,28 @@ export function TaskModal({
         dependent: dependent.trim() || null,
         value,
         points,
+        start_date: startDate || null,
+        project: project.trim() || null,
         blocked: isBlocked,
         blocked_by: isBlocked ? blockedBy : null,
         blocked_reason: isBlocked ? blockedReason : null,
       });
     }
+    return true;
+  };
 
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (handleSave()) {
+      onClose();
+    }
+  };
+
+  // Auto-save on close (for existing tasks or new tasks with content)
+  const handleClose = () => {
+    if (title.trim()) {
+      handleSave();
+    }
     onClose();
   };
 
@@ -117,6 +211,44 @@ export function TaskModal({
     if (task && confirm('Excluir esta tarefa?')) {
       onDelete(task.id);
       onClose();
+    }
+  };
+
+  // Checklist functions
+  const handleAddChecklistItem = async () => {
+    if (!task || !newItemText.trim()) return;
+
+    try {
+      const item = await api.addChecklistItem(task.id, newItemText.trim());
+      setChecklist(prev => [...prev, item]);
+      setNewItemText('');
+      newItemInputRef.current?.focus();
+    } catch (err) {
+      console.error('Erro ao adicionar item:', err);
+    }
+  };
+
+  const handleToggleChecklistItem = async (item: ChecklistItem) => {
+    if (!task) return;
+
+    try {
+      const updated = await api.updateChecklistItem(task.id, item.id, {
+        completed: !item.completed
+      });
+      setChecklist(prev => prev.map(i => i.id === item.id ? updated : i));
+    } catch (err) {
+      console.error('Erro ao atualizar item:', err);
+    }
+  };
+
+  const handleDeleteChecklistItem = async (itemId: string) => {
+    if (!task) return;
+
+    try {
+      await api.deleteChecklistItem(task.id, itemId);
+      setChecklist(prev => prev.filter(i => i.id !== itemId));
+    } catch (err) {
+      console.error('Erro ao excluir item:', err);
     }
   };
 
@@ -134,43 +266,172 @@ export function TaskModal({
     return options;
   };
 
+  const completedCount = checklist.filter(i => i.completed).length;
+  const totalCount = checklist.length;
+
   return (
-    <div className="modal-backdrop" onClick={onClose}>
+    <div className="modal-backdrop" onClick={handleClose}>
       <div className="modal task-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>{task ? 'Editar Tarefa' : 'Nova Tarefa'}</h2>
-          <button onClick={onClose} className="btn btn-icon btn-ghost">
-            <X size={18} />
-          </button>
-        </div>
-
         <form onSubmit={handleSubmit}>
+          <div className="modal-header">
+            <h2>{task ? 'Editar Tarefa' : 'Nova Tarefa'}</h2>
+            <div className="task-modal__header-actions">
+              {task && (
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  className="btn btn-ghost btn-danger btn-sm"
+                  title="Excluir tarefa"
+                >
+                  <Trash2 size={16} />
+                </button>
+              )}
+              <button type="submit" className="btn btn-primary btn-sm">
+                {task ? 'Salvar' : 'Criar'}
+              </button>
+            </div>
+          </div>
           <div className="modal-body">
-            <div className="form-group">
-              <label className="label">Título *</label>
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="input"
-                placeholder="Digite o título da tarefa"
-                autoFocus
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="label">Descrição</label>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="input textarea"
-                placeholder="Adicione detalhes sobre a tarefa..."
-                rows={3}
-              />
-            </div>
-
             <div className="task-modal__row">
+              <div className="form-group">
+                <label className="label">Título *</label>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className="input"
+                  placeholder="Digite o título da tarefa"
+                  autoFocus
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="label">
+                  <FolderKanban size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />
+                  Projeto
+                </label>
+                <input
+                  type="text"
+                  value={project}
+                  onChange={(e) => setProject(e.target.value)}
+                  className="input"
+                  placeholder="Nome do projeto"
+                />
+              </div>
+            </div>
+
+            <div className="task-modal__description-section">
+              <div className="task-modal__description-header">
+                <label className="label">Descrição</label>
+                <div className="task-modal__description-actions">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingDescription(!isEditingDescription)}
+                    className={`btn btn-ghost btn-xs ${isEditingDescription ? 'btn-active' : ''}`}
+                    title={isEditingDescription ? 'Ver preview' : 'Editar'}
+                  >
+                    {isEditingDescription ? <Eye size={14} /> : <Edit3 size={14} />}
+                    {isEditingDescription ? 'Preview' : 'Editar'}
+                  </button>
+                </div>
+              </div>
+
+              {isEditingDescription || !task ? (
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="input textarea task-modal__description-textarea"
+                  placeholder="Adicione detalhes, links, observações...&#10;&#10;Links serão clicáveis no preview (ex: https://exemplo.com)"
+                  rows={6}
+                  autoFocus={isEditingDescription}
+                />
+              ) : (
+                <div
+                  className="task-modal__description-view"
+                  onClick={() => setIsEditingDescription(true)}
+                >
+                  <RichTextPreview text={description} />
+                  {!description && (
+                    <span className="task-modal__description-hint">
+                      Clique para adicionar descrição
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Checklist / Subtarefas - logo após descrição */}
+            {task && (
+              <div className="task-modal__checklist-section">
+                <div className="task-modal__checklist-header">
+                  <h3>
+                    <ListTodo size={16} />
+                    Subtarefas
+                    {totalCount > 0 && (
+                      <span className="task-modal__checklist-count">
+                        {completedCount}/{totalCount}
+                      </span>
+                    )}
+                  </h3>
+                  {totalCount > 0 && (
+                    <div className="task-modal__checklist-progress">
+                      <div
+                        className="task-modal__checklist-progress-fill"
+                        style={{ width: `${(completedCount / totalCount) * 100}%` }}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div className="task-modal__checklist-items">
+                  {checklist.map((item) => (
+                    <div
+                      key={item.id}
+                      className={`task-modal__checklist-item ${item.completed ? 'task-modal__checklist-item--completed' : ''}`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => handleToggleChecklistItem(item)}
+                        className="task-modal__checklist-checkbox"
+                      >
+                        {item.completed && <Check size={12} />}
+                      </button>
+                      <span className="task-modal__checklist-text">{item.text}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteChecklistItem(item.id)}
+                        className="task-modal__checklist-delete"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="task-modal__checklist-add">
+                  <input
+                    ref={newItemInputRef}
+                    type="text"
+                    value={newItemText}
+                    onChange={(e) => setNewItemText(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddChecklistItem())}
+                    className="input"
+                    placeholder="Adicionar subtarefa..."
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddChecklistItem}
+                    disabled={!newItemText.trim()}
+                    className="btn btn-primary btn-sm"
+                  >
+                    <Plus size={14} />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="task-modal__row task-modal__row--3col">
               <div className="form-group">
                 <label className="label">Prioridade</label>
                 <select
@@ -199,31 +460,28 @@ export function TaskModal({
                   ))}
                 </select>
               </div>
+
+              <div className="form-group">
+                <label className="label">Mês (opcional)</label>
+                <select
+                  value={month}
+                  onChange={(e) => setMonth(e.target.value)}
+                  className="input select"
+                >
+                  <option value="">Sem mês definido</option>
+                  {getMonthOptions().map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
-            <div className="form-group">
-              <label className="label">Mês (opcional)</label>
-              <select
-                value={month}
-                onChange={(e) => setMonth(e.target.value)}
-                className="input select"
-              >
-                <option value="">Sem mês definido</option>
-                {getMonthOptions().map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Valor e Pontos */}
+            {/* Valor, Pontos e Data de Início */}
             <div className="task-modal__metrics-section">
               <div className="form-group">
-                <label className="label">
-                  <DollarSign size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />
-                  Valor (R$/mês)
-                </label>
+                <label className="label">Valor (R$/mês)</label>
                 <input
                   type="number"
                   value={value || ''}
@@ -252,6 +510,27 @@ export function TaskModal({
                     </button>
                   ))}
                 </div>
+              </div>
+
+              <div className="form-group">
+                <label className="label">
+                  <CalendarClock size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />
+                  Data de início
+                </label>
+                <div className="task-modal__date-input-wrapper">
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="input task-modal__date-input"
+                  />
+                  <CalendarClock size={16} className="task-modal__date-icon" />
+                </div>
+                {startDate && points > 0 && (
+                  <small className="task-modal__deadline-hint">
+                    Deadline: {new Date(new Date(startDate).getTime() + points * 24 * 60 * 60 * 1000).toLocaleDateString('pt-BR')}
+                  </small>
+                )}
               </div>
             </div>
 
@@ -332,26 +611,6 @@ export function TaskModal({
             </div>
           </div>
 
-          <div className="modal-footer">
-            {task && (
-              <button
-                type="button"
-                onClick={handleDelete}
-                className="btn btn-ghost btn-danger"
-              >
-                <Trash2 size={16} />
-                Excluir
-              </button>
-            )}
-            <div className="task-modal__footer-right">
-              <button type="button" onClick={onClose} className="btn btn-secondary">
-                Cancelar
-              </button>
-              <button type="submit" className="btn btn-primary">
-                {task ? 'Salvar' : 'Criar'}
-              </button>
-            </div>
-          </div>
         </form>
       </div>
     </div>

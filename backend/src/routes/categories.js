@@ -1,12 +1,12 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
-const db = require('../database/init');
 
 const router = express.Router();
 
 // Get all categories
 router.get('/', (req, res) => {
   try {
+    const db = req.db;
     const categories = db.prepare('SELECT * FROM categories ORDER BY name ASC').all();
     res.json(categories);
   } catch (error) {
@@ -18,6 +18,7 @@ router.get('/', (req, res) => {
 // Create category
 router.post('/', (req, res) => {
   try {
+    const db = req.db;
     const { name, color = '#6366F1' } = req.body;
 
     if (!name) {
@@ -44,6 +45,7 @@ router.post('/', (req, res) => {
 // Update category
 router.put('/:id', (req, res) => {
   try {
+    const db = req.db;
     const { id } = req.params;
     const { name, color } = req.body;
 
@@ -70,6 +72,7 @@ router.put('/:id', (req, res) => {
 // Delete category
 router.delete('/:id', (req, res) => {
   try {
+    const db = req.db;
     const { id } = req.params;
 
     const existing = db.prepare('SELECT * FROM categories WHERE id = ?').get(id);

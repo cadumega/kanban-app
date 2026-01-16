@@ -1,14 +1,78 @@
 import { useState, useEffect } from 'react';
-import { Loader2, RefreshCw, Plus, PanelLeft, DollarSign, Users } from 'lucide-react';
+import { Loader2, RefreshCw, Plus, PanelLeft, Users, FolderKanban, Settings, LogOut } from 'lucide-react';
 import { Board } from './components/Board/Board';
 import { Sidebar } from './components/Sidebar/Sidebar';
 import { TaskModal } from './components/TaskModal/TaskModal';
 import { ContactsPanel } from './components/Contacts/ContactsPanel';
+import { RoadmapPanel } from './components/Roadmap/RoadmapPanel';
+import { Login } from './components/Login/Login';
+import { AdminPanel } from './components/AdminPanel/AdminPanel';
 import { useBoard } from './hooks/useBoard';
-import { api } from './services/api';
-import type { Task, CreateTaskPayload } from './types';
+import { api, setAuthToken, getCurrentUser } from './services/api';
+import type { Task, CreateTaskPayload, User } from './types';
 
 function App() {
+  const [user, setUser] = useState<User | null>(() => {
+    const stored = localStorage.getItem('user');
+    return stored ? JSON.parse(stored) : null;
+  });
+  const [authLoading, setAuthLoading] = useState(true);
+  const [adminPanelOpen, setAdminPanelOpen] = useState(false);
+
+  // Check if token is still valid on mount
+  useEffect(() => {
+    const checkAuth = async () => {
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          const currentUser = await getCurrentUser();
+          setUser(currentUser);
+          localStorage.setItem('user', JSON.stringify(currentUser));
+        } catch {
+          // Token invalid, clear auth
+          setAuthToken(null);
+          localStorage.removeItem('user');
+          setUser(null);
+        }
+      }
+      setAuthLoading(false);
+    };
+    checkAuth();
+  }, []);
+
+  const handleLogin = (loggedInUser: User) => {
+    setUser(loggedInUser);
+  };
+
+  const handleLogout = () => {
+    setAuthToken(null);
+    localStorage.removeItem('user');
+    setUser(null);
+  };
+
+  // Show loading while checking auth
+  if (authLoading) {
+    return (
+      <div className="app">
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, color: 'var(--text-secondary)' }}>
+          <Loader2 size={24} style={{ animation: 'spin 1s linear infinite' }} />
+          <span>Carregando...</span>
+        </div>
+        <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
+  // Show login if not authenticated
+  if (!user) {
+    return <Login onLogin={handleLogin} />;
+  }
+
+  // Authenticated - show main app
+  return <AuthenticatedApp user={user} onLogout={handleLogout} />;
+}
+
+function AuthenticatedApp({ user, onLogout }: { user: User; onLogout: () => void }) {
   const {
     columns,
     categories,
@@ -37,6 +101,8 @@ function App() {
   const [selectedColumnId, setSelectedColumnId] = useState<string>('');
   const [sidebarVisible, setSidebarVisible] = useState(true);
   const [contactsOpen, setContactsOpen] = useState(false);
+  const [roadmapOpen, setRoadmapOpen] = useState(false);
+  const [adminPanelOpen, setAdminPanelOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(() => {
     return localStorage.getItem('darkMode') === 'true';
   });
@@ -192,16 +258,24 @@ function App() {
               <h1>Minhas Tarefas</h1>
               {stats.totalValue > 0 && (
                 <span style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px', background: 'var(--success-light)', color: 'var(--success)', borderRadius: 'var(--radius)', fontSize: 14, fontWeight: 600 }}>
-                  <DollarSign size={16} />
                   {formatValue(stats.totalValue)}
                 </span>
               )}
             </div>
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <button onClick={() => setRoadmapOpen(true)} className="btn btn-accent" title="Business Roadmap">
+                <FolderKanban size={16} />
+                Roadmap
+              </button>
               <button onClick={() => setContactsOpen(true)} className="btn btn-accent" title="Contatos CRM">
                 <Users size={16} />
-                Contatos CRM
+                CRM
               </button>
+              {user.role === 'master' && (
+                <button onClick={() => setAdminPanelOpen(true)} className="btn btn-ghost" title="Admin">
+                  <Settings size={16} />
+                </button>
+              )}
               <button onClick={refresh} className="btn btn-ghost" title="Atualizar">
                 <RefreshCw size={16} />
               </button>
@@ -209,6 +283,12 @@ function App() {
                 <Plus size={16} />
                 Nova Coluna
               </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 8, paddingLeft: 12, borderLeft: '1px solid var(--border)' }}>
+                <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{user.name || user.email}</span>
+                <button onClick={onLogout} className="btn btn-ghost" title="Sair" style={{ padding: '6px 8px' }}>
+                  <LogOut size={16} />
+                </button>
+              </div>
             </div>
           </div>
 
@@ -253,6 +333,10 @@ function App() {
       )}
 
       <ContactsPanel isOpen={contactsOpen} onClose={() => setContactsOpen(false)} />
+      <RoadmapPanel isOpen={roadmapOpen} onClose={() => setRoadmapOpen(false)} />
+      {user.role === 'master' && (
+        <AdminPanel isOpen={adminPanelOpen} onClose={() => setAdminPanelOpen(false)} />
+      )}
     </div>
   );
 }

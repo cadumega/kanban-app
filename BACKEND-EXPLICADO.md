@@ -475,14 +475,215 @@ Ou use ferramentas visuais:
 
 ---
 
+---
+
+## Sistema de Autenticação (Novo!)
+
+Agora o sistema tem login! Veja como funciona:
+
+### O que é JWT?
+
+JWT (JSON Web Token) é um "passe" que o usuário ganha ao fazer login. Funciona assim:
+
+```
+1. Usuário faz login (email + senha)
+2. Backend verifica se está correto
+3. Se OK, gera um TOKEN (string codificada)
+4. Frontend guarda o token no localStorage
+5. A cada pedido, frontend envia o token
+6. Backend verifica se o token é válido
+```
+
+**Analogia**: É como uma pulseira de evento. Você entra uma vez (login), ganha a pulseira (token), e pode acessar qualquer área sem mostrar documento de novo.
+
+### Estrutura do Token JWT
+
+```
+eyJhbGciOiJIUzI1NiJ9.eyJpZCI6ImFiYyIsImVtYWlsIjoidGVzdGVAZXhhbXBsZS5jb20ifQ.asdfgh
+|_____Header_____|.____________Payload______________|._____Assinatura_____|
+```
+
+- **Header**: Tipo do token
+- **Payload**: Dados do usuário (id, email, role)
+- **Assinatura**: Prova que é válido (usa uma senha secreta)
+
+### Middleware de Autenticação
+
+```javascript
+// middleware/auth.js
+const jwt = require('jsonwebtoken');
+const JWT_SECRET = process.env.JWT_SECRET || 'segredo';
+
+const authMiddleware = (req, res, next) => {
+  // Pega o token do header
+  const token = req.headers.authorization?.replace('Bearer ', '');
+
+  if (!token) {
+    return res.status(401).json({ error: 'Token não fornecido' });
+  }
+
+  try {
+    // Verifica se o token é válido
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.user = decoded;  // Adiciona dados do usuário ao request
+    next();              // Continua para o próximo passo
+  } catch {
+    return res.status(401).json({ error: 'Token inválido' });
+  }
+};
+```
+
+### Como a Senha é Protegida?
+
+Usamos **bcrypt** para "embaralhar" a senha de forma irreversível:
+
+```javascript
+const bcrypt = require('bcryptjs');
+
+// Ao criar usuário
+const hash = bcrypt.hashSync('minhaSenha123', 10);
+// Resultado: $2a$10$N9qo8uLOickgx2ZMRZoMy... (impossível reverter!)
+
+// Ao fazer login
+const senhaCorreta = bcrypt.compareSync('minhaSenha123', hashDoBanco);
+// Retorna true ou false
+```
+
+---
+
+## Sistema Multi-Usuário (Novo!)
+
+Cada usuário tem seu próprio banco de dados. Por quê?
+
+### Opções que existem:
+
+| Abordagem | Descrição | Usamos? |
+|-----------|-----------|---------|
+| user_id em cada tabela | Uma coluna identificando o dono | Não |
+| Um banco por usuário | Arquivo separado para cada um | **Sim!** |
+
+### Por que um banco por usuário?
+
+1. **Isolamento total**: Dados nunca se misturam
+2. **Backup fácil**: Copiar um arquivo = backup do usuário
+3. **Simples de implementar**: Não precisa mudar todas as queries
+4. **Perfeito para testes**: Fácil deletar/recriar
+
+### Como funciona:
+
+```
+data/
+├── users.db                      # Só tem os usuários
+└── users/
+    ├── joao@empresa.com/
+    │   ├── kanban.db             # Dados do João
+    │   └── images/               # Imagens do João
+    └── maria@empresa.com/
+        ├── kanban.db             # Dados da Maria
+        └── images/               # Imagens da Maria
+```
+
+### O Middleware que Injeta o Banco
+
+```javascript
+// Em index.js
+const injectUserDb = (req, res, next) => {
+  // req.user vem do authMiddleware (tem o email)
+  req.db = getUserDb(req.user.email);  // Abre o banco do usuário
+  next();
+};
+
+// Uso nas rotas:
+app.use('/api/tasks', authMiddleware, injectUserDb, tasksRoutes);
+//                     ↑ verifica login   ↑ pega banco do usuário
+```
+
+### Nas rotas, usamos req.db:
+
+```javascript
+// Antes (banco global):
+const db = require('../database/init');
+const tasks = db.prepare('SELECT * FROM tasks').all();
+
+// Agora (banco do usuário):
+const tasks = req.db.prepare('SELECT * FROM tasks').all();
+```
+
+---
+
+## Migrações de Banco
+
+Quando adicionamos novas colunas, precisamos atualizar bancos existentes:
+
+```javascript
+function migrateUserDb(db) {
+  // Verifica se a coluna existe
+  const tableInfo = db.prepare("PRAGMA table_info(contact_notes)").all();
+  const hasImagePath = tableInfo.some(col => col.name === 'image_path');
+
+  // Se não existe, adiciona
+  if (!hasImagePath) {
+    db.exec('ALTER TABLE contact_notes ADD COLUMN image_path TEXT');
+  }
+}
+```
+
+Isso roda automaticamente quando o banco é aberto.
+
+---
+
+## Upload de Imagens (Novo!)
+
+Usamos **Multer** para receber arquivos:
+
+```javascript
+const multer = require('multer');
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    // Salva na pasta do usuário
+    cb(null, `data/users/${req.user.email}/images`);
+  },
+  filename: (req, file, cb) => {
+    // Nome único: timestamp-uuid.extensao
+    cb(null, `${Date.now()}-${uuidv4()}.jpg`);
+  }
+});
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // Max 5MB
+});
+
+// Uso na rota:
+router.post('/notes', upload.single('image'), (req, res) => {
+  const imagePath = req.file?.filename;  // Nome do arquivo salvo
+  // ... salva no banco
+});
+```
+
+---
+
+## Resumo das Novidades
+
+| Recurso | Antes | Agora |
+|---------|-------|-------|
+| Login | Não tinha | JWT + bcrypt |
+| Dados | Um banco global | Um banco por usuário |
+| Imagens | Não tinha | Upload com Multer |
+| Rotas | Abertas | Protegidas com middleware |
+
+---
+
 ## Próximos Passos de Aprendizado
 
 1. **Validação** - Verificar se os dados estão corretos antes de salvar
 2. **Tratamento de Erros** - O que fazer quando algo dá errado
-3. **Autenticação** - Como saber quem está fazendo o pedido
+3. ~~**Autenticação**~~ ✅ Já implementado!
 4. **Relacionamentos** - Como conectar tabelas (JOIN)
-5. **Migrations** - Como atualizar o banco sem perder dados
+5. ~~**Migrations**~~ ✅ Já implementado!
+6. **Escalabilidade** - Migrar para PostgreSQL quando necessário
 
 ---
 
-*Dica: Abra o arquivo `backend/src/routes/tasks.js` e leia com calma. É o melhor jeito de aprender!*
+*Dica: Leia o arquivo `GUIA-COMPLETO.md` para uma visão geral de todo o projeto!*

@@ -1,9 +1,69 @@
 import axios from 'axios';
-import type { Column, Task, Category, CreateTaskPayload, UpdateTaskPayload, MoveTaskPayload, Contact, ContactNote } from '../types';
+import type { Column, Task, Category, CreateTaskPayload, UpdateTaskPayload, MoveTaskPayload, Contact, ContactNote, ChecklistItem, Project, User, LoginResponse } from '../types';
 
 export const api = axios.create({
   baseURL: '/api',
 });
+
+// Auth token management
+export const setAuthToken = (token: string | null) => {
+  if (token) {
+    api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    localStorage.setItem('token', token);
+  } else {
+    delete api.defaults.headers.common['Authorization'];
+    localStorage.removeItem('token');
+  }
+};
+
+// Initialize token from localStorage on load
+const storedToken = localStorage.getItem('token');
+if (storedToken) {
+  api.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+}
+
+// Intercept 401 errors to clear auth state
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      setAuthToken(null);
+      localStorage.removeItem('user');
+      window.location.reload();
+    }
+    return Promise.reject(error);
+  }
+);
+
+// Auth API
+export const login = async (email: string, password: string): Promise<LoginResponse> => {
+  const { data } = await api.post('/auth/login', { email, password });
+  return data;
+};
+
+export const getCurrentUser = async (): Promise<User> => {
+  const { data } = await api.get('/auth/me');
+  return data;
+};
+
+export const getUsers = async (): Promise<User[]> => {
+  const { data } = await api.get('/auth/users');
+  return data;
+};
+
+export const createUser = async (email: string, password: string, name?: string): Promise<User> => {
+  const { data } = await api.post('/auth/users', { email, password, name });
+  return data;
+};
+
+export const updateUser = async (id: string, updates: { name?: string; password?: string; active?: number }): Promise<User> => {
+  const { data } = await api.put(`/auth/users/${id}`, updates);
+  return data;
+};
+
+export const deleteUser = async (id: string): Promise<void> => {
+  await api.delete(`/auth/users/${id}`);
+};
 
 // Columns
 export const getColumns = async (): Promise<Column[]> => {
@@ -111,11 +171,78 @@ export const deleteContact = async (id: string): Promise<void> => {
   await api.delete(`/contacts/${id}`);
 };
 
-export const addContactNote = async (contactId: string, content: string): Promise<ContactNote> => {
-  const { data } = await api.post(`/contacts/${contactId}/notes`, { content });
+export const addContactNote = async (contactId: string, content: string, image?: File): Promise<ContactNote> => {
+  const formData = new FormData();
+  if (content) {
+    formData.append('content', content);
+  }
+  if (image) {
+    formData.append('image', image);
+  }
+  const { data } = await api.post(`/contacts/${contactId}/notes`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
   return data;
+};
+
+export const getContactImageUrl = (imagePath: string): string => {
+  return `/api/contacts/images/${imagePath}`;
 };
 
 export const deleteContactNote = async (contactId: string, noteId: string): Promise<void> => {
   await api.delete(`/contacts/${contactId}/notes/${noteId}`);
+};
+
+// Checklist (Subtarefas)
+export const getChecklist = async (taskId: string): Promise<ChecklistItem[]> => {
+  const { data } = await api.get(`/tasks/${taskId}/checklist`);
+  return data;
+};
+
+export const addChecklistItem = async (taskId: string, text: string): Promise<ChecklistItem> => {
+  const { data } = await api.post(`/tasks/${taskId}/checklist`, { text });
+  return data;
+};
+
+export const updateChecklistItem = async (
+  taskId: string,
+  itemId: string,
+  updates: { completed?: boolean; text?: string }
+): Promise<ChecklistItem> => {
+  const { data } = await api.put(`/tasks/${taskId}/checklist/${itemId}`, updates);
+  return data;
+};
+
+export const deleteChecklistItem = async (taskId: string, itemId: string): Promise<void> => {
+  await api.delete(`/tasks/${taskId}/checklist/${itemId}`);
+};
+
+// Projects (Roadmap)
+export const getProjects = async (): Promise<Project[]> => {
+  const { data } = await api.get('/projects');
+  return data;
+};
+
+export const getProject = async (id: string): Promise<Project & { tasks: Task[] }> => {
+  const { data } = await api.get(`/projects/${id}`);
+  return data;
+};
+
+export const getRoadmapTimeline = async (): Promise<{ projects: Project[] }> => {
+  const { data } = await api.get('/projects/roadmap/timeline');
+  return data;
+};
+
+export const createProject = async (project: Partial<Project>): Promise<Project> => {
+  const { data } = await api.post('/projects', project);
+  return data;
+};
+
+export const updateProject = async (id: string, updates: Partial<Project>): Promise<Project> => {
+  const { data } = await api.put(`/projects/${id}`, updates);
+  return data;
+};
+
+export const deleteProject = async (id: string): Promise<void> => {
+  await api.delete(`/projects/${id}`);
 };

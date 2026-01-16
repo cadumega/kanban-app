@@ -39,7 +39,7 @@ export function useBoard() {
 
   // Filter tasks
   const getFilteredColumns = useCallback(() => {
-    if (!filters.category_id && !filters.priority && !filters.month && filters.blocked === null && !filters.person) {
+    if (!filters.category_id && !filters.priority && !filters.month && filters.blocked === null && !filters.person && !filters.project) {
       return columns;
     }
 
@@ -51,6 +51,7 @@ export function useBoard() {
         if (filters.month && task.month !== filters.month) return false;
         if (filters.blocked !== null && Boolean(task.blocked) !== filters.blocked) return false;
         if (filters.person && task.assignee !== filters.person && task.dependent !== filters.person) return false;
+        if (filters.project && task.project !== filters.project) return false;
         return true;
       }),
     }));

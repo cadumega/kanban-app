@@ -17,6 +17,7 @@ import {
   FileJson,
   FileSpreadsheet,
   PanelLeftClose,
+  FolderKanban,
 } from 'lucide-react';
 import type { Category, Filters, Priority, Column } from '../../types';
 import './Sidebar.css';
@@ -66,6 +67,7 @@ export function Sidebar({
     category: true,
     month: false,
     people: true,
+    project: true,
   });
   const [showNewCategory, setShowNewCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
@@ -94,6 +96,30 @@ export function Sidebar({
         }
         if (task.dependent) {
           counts[task.dependent] = (counts[task.dependent] || 0) + 1;
+        }
+      });
+    });
+    return counts;
+  }, [columns]);
+
+  // Get unique projects
+  const projects = useMemo(() => {
+    const projectSet = new Set<string>();
+    columns.forEach(col => {
+      col.tasks.forEach(task => {
+        if (task.project) projectSet.add(task.project);
+      });
+    });
+    return Array.from(projectSet).sort((a, b) => a.localeCompare(b));
+  }, [columns]);
+
+  // Count tasks per project
+  const taskCountByProject = useMemo(() => {
+    const counts: Record<string, number> = {};
+    columns.forEach(col => {
+      col.tasks.forEach(task => {
+        if (task.project) {
+          counts[task.project] = (counts[task.project] || 0) + 1;
         }
       });
     });
@@ -135,6 +161,13 @@ export function Sidebar({
     });
   };
 
+  const handleProjectFilter = (project: string | null) => {
+    onFilterChange({
+      ...filters,
+      project: filters.project === project ? null : project,
+    });
+  };
+
   const clearFilters = () => {
     onFilterChange({
       category_id: null,
@@ -142,11 +175,12 @@ export function Sidebar({
       month: null,
       blocked: null,
       person: null,
+      project: null,
     });
   };
 
   const hasActiveFilters =
-    filters.category_id || filters.priority || filters.month || filters.blocked || filters.person;
+    filters.category_id || filters.priority || filters.month || filters.blocked || filters.person || filters.project;
 
   const handleAddCategory = (e: React.FormEvent) => {
     e.preventDefault();
@@ -325,6 +359,40 @@ export function Sidebar({
           )}
         </div>
 
+        {/* Project Filter */}
+        {projects.length > 0 && (
+          <div className="sidebar__section">
+            <button
+              className="sidebar__section-toggle"
+              onClick={() => toggleSection('project')}
+            >
+              {expandedSections.project ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+              <FolderKanban size={16} />
+              <span>Projeto</span>
+            </button>
+
+            {expandedSections.project && (
+              <div className="sidebar__section-content">
+                {projects.map((project) => (
+                  <button
+                    key={project}
+                    onClick={() => handleProjectFilter(project)}
+                    className={`sidebar__filter-item ${
+                      filters.project === project ? 'sidebar__filter-item--active' : ''
+                    }`}
+                  >
+                    <FolderKanban size={14} />
+                    <span>{project}</span>
+                    <span className="sidebar__filter-count">
+                      {taskCountByProject[project] || 0}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* People Filter */}
         {people.length > 0 && (
           <div className="sidebar__section">
@@ -343,7 +411,9 @@ export function Sidebar({
                   <button
                     key={person}
                     onClick={() => onFilterByPerson(person)}
-                    className="sidebar__filter-item"
+                    className={`sidebar__filter-item ${
+                      filters.person === person ? 'sidebar__filter-item--active' : ''
+                    }`}
                   >
                     <User size={14} />
                     <span>{person}</span>

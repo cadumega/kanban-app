@@ -88,87 +88,156 @@
 
 .task-card__lock {
   color: var(--danger);
-}
-
-.task-card__description {
-  font-size: 13px;
-  color: var(--text-secondary);
-  margin-bottom: 10px;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  flex-shrink: 0;
 }
 
 .task-card__footer {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.task-card__badges {
-  display: flex;
   gap: 6px;
   flex-wrap: wrap;
-}
-
-.task-card__meta {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  margin-top: 4px;
 }
 
 .task-card__category {
   display: inline-flex;
   align-items: center;
   padding: 2px 8px;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 500;
   border-radius: 999px;
 }
 
-.task-card__month {
+/* Tags unificadas */
+.task-card__tag {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  font-size: 11px;
-  color: var(--text-muted);
-}
-
-.task-card__people {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 8px;
-}
-
-.task-card__person {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 8px;
-  font-size: 11px;
+  gap: 3px;
+  padding: 2px 6px;
+  font-size: 10px;
   font-weight: 500;
   border-radius: var(--radius-sm);
+  background: var(--bg-column);
+  color: var(--text-secondary);
 }
 
-.task-card__person--assignee {
+.task-card__tag--project {
+  background: #8B5CF6;
+  color: white;
+}
+
+.task-card__tag--assignee {
   background: var(--accent-light);
   color: var(--accent);
 }
 
-.task-card__person--dependent {
+.task-card__tag--dependent {
   background: var(--warning-light);
   color: var(--warning);
 }
 
+.task-card__tag--value {
+  background: var(--success-light);
+  color: var(--success);
+}
+
+.task-card__tag--month {
+  background: var(--bg-column);
+  color: var(--text-muted);
+}
+
+.task-card__tag--checklist {
+  background: var(--bg-column);
+  color: var(--text-secondary);
+}
+
+.task-card__tag--checklist-done {
+  background: var(--success-light);
+  color: var(--success);
+}
+
+.task-card__tag--points {
+  background: var(--accent-light);
+  color: var(--accent);
+}
+
 .task-card__blocked-info {
-  margin-top: 8px;
   padding: 6px 8px;
   background: var(--danger-light);
   border-radius: var(--radius-sm);
-  font-size: 12px;
+  font-size: 11px;
   color: var(--danger);
+  margin-bottom: 8px;
+}
+
+/* Deadline indicator - Mini progress bar */
+.task-card__deadline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.task-card__deadline-bar {
+  flex: 1;
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+  min-width: 60px;
+}
+
+.task-card__deadline-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.task-card__deadline-label {
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 20px;
+  text-align: right;
+}
+
+/* Status colors */
+.task-card__deadline--ok .task-card__deadline-fill {
+  background: var(--success);
+}
+.task-card__deadline--ok .task-card__deadline-label {
+  color: var(--success);
+}
+
+.task-card__deadline--close .task-card__deadline-fill {
+  background: var(--warning);
+}
+.task-card__deadline--close .task-card__deadline-label {
+  color: var(--warning);
+}
+
+.task-card__deadline--today .task-card__deadline-fill {
+  background: #F97316;
+  animation: pulse-bar 1s infinite;
+}
+.task-card__deadline--today .task-card__deadline-label {
+  color: #F97316;
+}
+
+.task-card__deadline--overdue .task-card__deadline-fill {
+  background: var(--danger);
+  width: 100% !important;
+}
+.task-card__deadline--overdue .task-card__deadline-label {
+  color: var(--danger);
+  animation: pulse-danger 1s infinite;
+}
+
+@keyframes pulse-bar {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+@keyframes pulse-danger {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }

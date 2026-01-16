@@ -2,10 +2,6 @@
 
 echo "🚀 Iniciando Kanban App..."
 
-# Fazer backup antes de iniciar
-echo "💾 Fazendo backup..."
-./backup.sh
-
 # Matar processos anteriores se existirem
 lsof -ti:3001 | xargs kill -9 2>/dev/null
 lsof -ti:5173 | xargs kill -9 2>/dev/null
@@ -30,7 +26,7 @@ open http://localhost:5173
 
 echo ""
 echo "✅ Kanban rodando em: http://localhost:5173"
-echo "📁 Backup salvo em: ~/kanban-backups/"
+echo "💡 Para fazer backup manual: ./backup.sh"
 echo ""
 echo "Para parar: pressione Ctrl+C"
 

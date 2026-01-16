@@ -1,8 +1,39 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Lock, Calendar, User, Users, DollarSign, Clock } from 'lucide-react';
+import { Lock, Calendar, User, Users, Clock, CheckSquare, FolderKanban } from 'lucide-react';
 import type { Task } from '../../types';
 import './TaskCard.css';
+
+// Calcula status do deadline baseado em start_date + pontos (pontos = dias)
+function getDeadlineStatus(startDate: string | null, points: number) {
+  if (!startDate || points <= 0) return null;
+
+  const start = new Date(startDate);
+  start.setHours(0, 0, 0, 0);
+  const deadline = new Date(start.getTime() + points * 24 * 60 * 60 * 1000);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const totalDays = points;
+  const daysElapsed = Math.ceil((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+  const daysRemaining = totalDays - daysElapsed;
+
+  // Percentual de progresso (0 a 100+)
+  const progress = Math.min(Math.max((daysElapsed / totalDays) * 100, 0), 120);
+
+  let status: string;
+  if (daysRemaining < 0) {
+    status = 'overdue';
+  } else if (daysRemaining === 0) {
+    status = 'today';
+  } else if (progress >= 70) {
+    status = 'close';
+  } else {
+    status = 'ok';
+  }
+
+  return { status, daysRemaining, progress, totalDays };
+}
 
 interface TaskCardProps {
   task: Task;
@@ -45,6 +76,8 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
     }).format(value);
   };
 
+  const deadlineStatus = getDeadlineStatus(task.start_date, task.points);
+
   return (
     <div
       ref={setNodeRef}
@@ -57,77 +90,105 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
       <div className="task-card__content" onClick={onClick}>
         <div className="task-card__header">
           <h4 className="task-card__title">{task.title}</h4>
-          <div className="task-card__header-icons">
-            {task.points > 0 && (
-              <span className="points-badge" title="Pontos de complexidade">
-                <Clock size={10} />
-                {task.points}
-              </span>
-            )}
-            {task.blocked === 1 && (
-              <Lock size={14} className="task-card__lock" />
-            )}
-          </div>
+          {task.blocked === 1 && (
+            <Lock size={14} className="task-card__lock" />
+          )}
         </div>
 
-        {task.description && (
-          <p className="task-card__description">{task.description}</p>
-        )}
-
-        {(task.assignee || task.dependent) && (
-          <div className="task-card__people">
-            {task.assignee && (
-              <span className="task-card__person task-card__person--assignee">
-                <User size={12} />
-                {task.assignee}
-              </span>
-            )}
-            {task.dependent && (
-              <span className="task-card__person task-card__person--dependent">
-                <Users size={12} />
-                {task.dependent}
-              </span>
-            )}
-          </div>
-        )}
-
-        <div className="task-card__footer">
-          <div className="task-card__badges">
-            <span className={`badge badge-priority-${task.priority}`}>
-              {priorityLabels[task.priority]}
+        {deadlineStatus && (
+          <div
+            className={`task-card__deadline task-card__deadline--${deadlineStatus.status}`}
+            title={deadlineStatus.daysRemaining < 0
+              ? `${Math.abs(deadlineStatus.daysRemaining)}d atrasado`
+              : deadlineStatus.daysRemaining === 0
+                ? 'Vence hoje!'
+                : `${deadlineStatus.daysRemaining}d restantes`}
+          >
+            <div className="task-card__deadline-bar">
+              <div
+                className="task-card__deadline-fill"
+                style={{ width: `${Math.min(deadlineStatus.progress, 100)}%` }}
+              />
+            </div>
+            <span className="task-card__deadline-label">
+              {deadlineStatus.daysRemaining < 0
+                ? `+${Math.abs(deadlineStatus.daysRemaining)}`
+                : deadlineStatus.daysRemaining}
             </span>
-
-            {task.category_name && (
-              <span
-                className="task-card__category"
-                style={{ backgroundColor: task.category_color + '20', color: task.category_color }}
-              >
-                {task.category_name}
-              </span>
-            )}
           </div>
-
-          <div className="task-card__meta">
-            {task.value > 0 && (
-              <span className="value-badge" title="Valor mensal">
-                <DollarSign size={10} />
-                {formatValue(task.value)}
-              </span>
-            )}
-            {task.month && (
-              <span className="task-card__month">
-                <Calendar size={12} />
-                {formatMonth(task.month)}
-              </span>
-            )}
-          </div>
-        </div>
+        )}
 
         {task.blocked === 1 && task.blocked_by && (
           <div className="task-card__blocked-info">
             Bloqueado por: {task.blocked_by}
           </div>
         )}
+
+        <div className="task-card__footer">
+          <span className={`badge badge-priority-${task.priority}`}>
+            {priorityLabels[task.priority]}
+          </span>
+
+          {task.category_name && (
+            <span
+              className="task-card__category"
+              style={{ backgroundColor: task.category_color + '20', color: task.category_color }}
+            >
+              {task.category_name}
+            </span>
+          )}
+
+          {task.project && (
+            <span className="task-card__tag task-card__tag--project">
+              <FolderKanban size={10} />
+              {task.project}
+            </span>
+          )}
+
+          {task.assignee && (
+            <span className="task-card__tag task-card__tag--assignee">
+              <User size={10} />
+              {task.assignee}
+            </span>
+          )}
+
+          {task.dependent && (
+            <span className="task-card__tag task-card__tag--dependent">
+              <Users size={10} />
+              {task.dependent}
+            </span>
+          )}
+
+          {task.value > 0 && (
+            <span className="task-card__tag task-card__tag--value" title="Valor mensal">
+              {formatValue(task.value)}
+            </span>
+          )}
+
+          {task.month && (
+            <span className="task-card__tag task-card__tag--month">
+              <Calendar size={10} />
+              {formatMonth(task.month)}
+            </span>
+          )}
+
+          {(task.checklist_total ?? 0) > 0 && (
+            <span
+              className={`task-card__tag task-card__tag--checklist ${task.checklist_completed === task.checklist_total ? 'task-card__tag--checklist-done' : ''}`}
+              title="Subtarefas"
+            >
+              <CheckSquare size={10} />
+              {task.checklist_completed}/{task.checklist_total}
+            </span>
+          )}
+
+          {task.points > 0 && (
+            <span className="task-card__tag task-card__tag--points" title="Pontos">
+              <Clock size={10} />
+              {task.points}
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );

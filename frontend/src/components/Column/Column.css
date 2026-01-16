@@ -177,3 +177,41 @@
 .column__empty p {
   font-size: 13px;
 }
+
+/* Month divider for Concluído column */
+.column__month-divider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  margin: 4px 0;
+}
+
+.column__month-divider::before,
+.column__month-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.column__month-divider span {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.column__month-divider--first {
+  margin-top: 0;
+}
+
+/* Subtle task divider for Suporte column */
+.column__task-divider {
+  height: 1px;
+  background: var(--border);
+  opacity: 0.5;
+  margin: 4px 0;
+}

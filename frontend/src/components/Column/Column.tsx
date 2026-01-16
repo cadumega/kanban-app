@@ -1,10 +1,18 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, Fragment } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { Plus, MoreHorizontal, Pencil, Trash2, X, Check, DollarSign } from 'lucide-react';
+import { Plus, MoreHorizontal, Pencil, Trash2, X, Check } from 'lucide-react';
 import { TaskCard } from '../TaskCard/TaskCard';
 import type { Column as ColumnType, Task } from '../../types';
 import './Column.css';
+
+const MONTH_NAMES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+
+function formatMonthLabel(month: string | null): string {
+  if (!month) return 'Sem data';
+  const [year, m] = month.split('-');
+  return `${MONTH_NAMES[parseInt(m) - 1]} ${year}`;
+}
 
 interface ColumnProps {
   column: ColumnType;
@@ -36,6 +44,45 @@ export function Column({
   const totalPoints = useMemo(() => {
     return column.tasks.reduce((sum, task) => sum + (task.points || 0), 0);
   }, [column.tasks]);
+
+  // Check if column is Concluído or Suporte (case-insensitive)
+  const isConcluido = column.title.toLowerCase().includes('conclu');
+  const isSuporte = column.title.toLowerCase().includes('suporte');
+
+  // Group tasks by month for Concluído column
+  const tasksByMonth = useMemo(() => {
+    if (!isConcluido) return null;
+
+    const groups: { month: string | null; tasks: Task[] }[] = [];
+    let currentMonth: string | null = null;
+    let currentGroup: Task[] = [];
+
+    // Sort tasks by month (descending - most recent first)
+    const sortedTasks = [...column.tasks].sort((a, b) => {
+      const monthA = a.month || '0000-00';
+      const monthB = b.month || '0000-00';
+      return monthB.localeCompare(monthA);
+    });
+
+    sortedTasks.forEach(task => {
+      const taskMonth = task.month || null;
+      if (taskMonth !== currentMonth) {
+        if (currentGroup.length > 0) {
+          groups.push({ month: currentMonth, tasks: currentGroup });
+        }
+        currentMonth = taskMonth;
+        currentGroup = [task];
+      } else {
+        currentGroup.push(task);
+      }
+    });
+
+    if (currentGroup.length > 0) {
+      groups.push({ month: currentMonth, tasks: currentGroup });
+    }
+
+    return groups;
+  }, [column.tasks, isConcluido]);
 
   const formatValue = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -155,7 +202,6 @@ export function Column({
         <div className="column__stats">
           {totalValue > 0 && (
             <span className="column__stat column__stat--value">
-              <DollarSign size={12} />
               {formatValue(totalValue)}
             </span>
           )}
@@ -172,13 +218,52 @@ export function Column({
           items={column.tasks.map((t) => t.id)}
           strategy={verticalListSortingStrategy}
         >
-          {column.tasks.map((task) => (
-            <TaskCard
-              key={task.id}
-              task={task}
-              onClick={() => onEditTask(task)}
-            />
-          ))}
+          {/* Concluído: tasks grouped by month with dividers */}
+          {isConcluido && tasksByMonth ? (
+            tasksByMonth.map((group, groupIndex) => (
+              <Fragment key={group.month || 'no-month'}>
+                {groupIndex > 0 && (
+                  <div className="column__month-divider">
+                    <span>{formatMonthLabel(group.month)}</span>
+                  </div>
+                )}
+                {groupIndex === 0 && group.month && (
+                  <div className="column__month-divider column__month-divider--first">
+                    <span>{formatMonthLabel(group.month)}</span>
+                  </div>
+                )}
+                {group.tasks.map((task) => (
+                  <TaskCard
+                    key={task.id}
+                    task={task}
+                    onClick={() => onEditTask(task)}
+                  />
+                ))}
+              </Fragment>
+            ))
+          ) : isSuporte ? (
+            /* Suporte: divider every 3 tasks */
+            column.tasks.map((task, index) => (
+              <Fragment key={task.id}>
+                {index > 0 && index % 3 === 0 && (
+                  <div className="column__task-divider" />
+                )}
+                <TaskCard
+                  task={task}
+                  onClick={() => onEditTask(task)}
+                />
+              </Fragment>
+            ))
+          ) : (
+            /* Default: no dividers */
+            column.tasks.map((task) => (
+              <TaskCard
+                key={task.id}
+                task={task}
+                onClick={() => onEditTask(task)}
+              />
+            ))
+          )}
         </SortableContext>
 
         {column.tasks.length === 0 && (
