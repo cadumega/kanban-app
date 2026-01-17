@@ -269,11 +269,11 @@ function AuthenticatedApp({ user, onLogout }: { user: User; onLogout: () => void
                 <FolderKanban size={16} />
                 Roadmap
               </button>
-              <button onClick={() => setContactsOpen(true)} className="btn btn-accent" title="Contatos CRM">
+              <button onClick={() => setContactsOpen(true)} className="btn" style={{ background: '#0D9488', color: 'white' }} title="Contatos CRM">
                 <Users size={16} />
                 CRM
               </button>
-              <button onClick={() => setFollowupsOpen(true)} className="btn btn-ghost" title="Follow-ups pendentes">
+              <button onClick={() => setFollowupsOpen(true)} className="btn" style={{ background: '#0F766E', color: 'white' }} title="Follow-ups pendentes">
                 <Bell size={16} />
               </button>
               {user.role === 'master' && (
