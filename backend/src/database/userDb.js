@@ -54,7 +54,7 @@ function getUserDb(userEmail) {
   return db;
 }
 
-// Migrate existing databases (add new columns)
+// Migrate existing databases (add new columns/tables)
 function migrateUserDb(db) {
   // Check if image_path column exists in contact_notes
   const tableInfo = db.prepare("PRAGMA table_info(contact_notes)").all();
@@ -65,7 +65,27 @@ function migrateUserDb(db) {
     console.log('Migration: Added image_path column to contact_notes');
   }
 
-  // Make content nullable (SQLite doesn't support ALTER COLUMN, but new rows will work)
+  // Check if contact_followups table exists
+  const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='contact_followups'").get();
+  if (!tables) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS contact_followups (
+        id TEXT PRIMARY KEY,
+        contact_id TEXT NOT NULL,
+        date TEXT NOT NULL,
+        description TEXT DEFAULT '',
+        completed INTEGER DEFAULT 0,
+        completed_at DATETIME,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_contact_followups_contact ON contact_followups(contact_id);
+      CREATE INDEX IF NOT EXISTS idx_contact_followups_date ON contact_followups(date);
+      CREATE INDEX IF NOT EXISTS idx_contact_followups_completed ON contact_followups(completed);
+    `);
+    console.log('Migration: Created contact_followups table');
+  }
 }
 
 // Get user directory path
@@ -146,6 +166,21 @@ function initializeUserDb(db) {
     );
 
     CREATE INDEX IF NOT EXISTS idx_contact_notes_contact ON contact_notes(contact_id);
+
+    CREATE TABLE IF NOT EXISTS contact_followups (
+      id TEXT PRIMARY KEY,
+      contact_id TEXT NOT NULL,
+      date TEXT NOT NULL,
+      description TEXT DEFAULT '',
+      completed INTEGER DEFAULT 0,
+      completed_at DATETIME,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_contact_followups_contact ON contact_followups(contact_id);
+    CREATE INDEX IF NOT EXISTS idx_contact_followups_date ON contact_followups(date);
+    CREATE INDEX IF NOT EXISTS idx_contact_followups_completed ON contact_followups(completed);
 
     CREATE TABLE IF NOT EXISTS task_checklist (
       id TEXT PRIMARY KEY,

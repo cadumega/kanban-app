@@ -203,6 +203,102 @@ router.get('/images/:filename', (req, res) => {
   res.sendFile(imagePath);
 });
 
+// ==================== FOLLOW-UPS ====================
+
+// Get all pending follow-ups (for the panel)
+router.get('/followups/pending', (req, res) => {
+  const db = req.db;
+
+  const followups = db.prepare(`
+    SELECT f.*, c.name as contact_name, c.company as contact_company
+    FROM contact_followups f
+    JOIN contacts c ON f.contact_id = c.id
+    WHERE f.completed = 0
+    ORDER BY f.date ASC
+  `).all();
+
+  res.json(followups);
+});
+
+// Get follow-ups for a contact
+router.get('/:id/followups', (req, res) => {
+  const db = req.db;
+  const { id } = req.params;
+
+  const followups = db.prepare(`
+    SELECT * FROM contact_followups
+    WHERE contact_id = ?
+    ORDER BY completed ASC, date ASC
+  `).all(id);
+
+  res.json(followups);
+});
+
+// Create follow-up
+router.post('/:id/followups', (req, res) => {
+  const db = req.db;
+  const { id } = req.params;
+  const { date, description } = req.body;
+
+  if (!date) {
+    return res.status(400).json({ error: 'Data é obrigatória' });
+  }
+
+  const contact = db.prepare('SELECT * FROM contacts WHERE id = ?').get(id);
+  if (!contact) {
+    return res.status(404).json({ error: 'Contato não encontrado' });
+  }
+
+  const followupId = uuidv4();
+
+  db.prepare(`
+    INSERT INTO contact_followups (id, contact_id, date, description)
+    VALUES (?, ?, ?, ?)
+  `).run(followupId, id, date, description || '');
+
+  const followup = db.prepare('SELECT * FROM contact_followups WHERE id = ?').get(followupId);
+  res.status(201).json(followup);
+});
+
+// Update follow-up (mark complete or edit)
+router.put('/:contactId/followups/:followupId', (req, res) => {
+  const db = req.db;
+  const { followupId } = req.params;
+  const { date, description, completed } = req.body;
+
+  const existing = db.prepare('SELECT * FROM contact_followups WHERE id = ?').get(followupId);
+  if (!existing) {
+    return res.status(404).json({ error: 'Follow-up não encontrado' });
+  }
+
+  const newCompleted = completed !== undefined ? (completed ? 1 : 0) : existing.completed;
+  const completedAt = newCompleted === 1 && existing.completed === 0 ? new Date().toISOString() : existing.completed_at;
+
+  db.prepare(`
+    UPDATE contact_followups
+    SET date = ?, description = ?, completed = ?, completed_at = ?
+    WHERE id = ?
+  `).run(
+    date || existing.date,
+    description !== undefined ? description : existing.description,
+    newCompleted,
+    completedAt,
+    followupId
+  );
+
+  const followup = db.prepare('SELECT * FROM contact_followups WHERE id = ?').get(followupId);
+  res.json(followup);
+});
+
+// Delete follow-up
+router.delete('/:contactId/followups/:followupId', (req, res) => {
+  const db = req.db;
+  const { followupId } = req.params;
+
+  db.prepare('DELETE FROM contact_followups WHERE id = ?').run(followupId);
+  res.status(204).send();
+});
+
 // Error handler for multer
 router.use((err, req, res, next) => {
   if (err instanceof multer.MulterError) {

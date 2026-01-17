@@ -13,8 +13,12 @@ import {
   ChevronLeft,
   Image,
   Loader2,
+  Calendar,
+  Clock,
+  Check,
+  Bell,
 } from 'lucide-react';
-import type { Contact } from '../../types';
+import type { Contact, ContactFollowup } from '../../types';
 import * as api from '../../services/api';
 import './ContactsPanel.css';
 
@@ -32,6 +36,12 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [sendingNote, setSendingNote] = useState(false);
+
+  // Follow-up state
+  const [followups, setFollowups] = useState<ContactFollowup[]>([]);
+  const [showFollowupForm, setShowFollowupForm] = useState(false);
+  const [followupDate, setFollowupDate] = useState('');
+  const [followupDescription, setFollowupDescription] = useState('');
 
   // Form state
   const [formData, setFormData] = useState({
@@ -62,8 +72,12 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
 
   const loadContactDetails = async (id: string) => {
     try {
-      const data = await api.getContact(id);
-      setSelectedContact(data);
+      const [contactData, followupsData] = await Promise.all([
+        api.getContact(id),
+        api.getContactFollowups(id),
+      ]);
+      setSelectedContact(contactData);
+      setFollowups(followupsData);
     } catch (err) {
       console.error('Erro ao carregar contato:', err);
     }
@@ -174,6 +188,85 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
     } catch (err) {
       console.error('Erro ao excluir nota:', err);
     }
+  };
+
+  // Follow-up functions
+  const addDaysToDate = (days: number): string => {
+    const date = new Date();
+    date.setDate(date.getDate() + days);
+    return date.toISOString().split('T')[0];
+  };
+
+  const handleQuickFollowup = async (days: number) => {
+    if (!selectedContact) return;
+    const date = addDaysToDate(days);
+    try {
+      const followup = await api.createFollowup(selectedContact.id, date, '');
+      setFollowups(prev => [...prev, followup].sort((a, b) => a.date.localeCompare(b.date)));
+    } catch (err) {
+      console.error('Erro ao criar follow-up:', err);
+    }
+  };
+
+  const handleCreateFollowup = async () => {
+    if (!selectedContact || !followupDate) return;
+    try {
+      const followup = await api.createFollowup(selectedContact.id, followupDate, followupDescription);
+      setFollowups(prev => [...prev, followup].sort((a, b) => a.date.localeCompare(b.date)));
+      setShowFollowupForm(false);
+      setFollowupDate('');
+      setFollowupDescription('');
+    } catch (err) {
+      console.error('Erro ao criar follow-up:', err);
+    }
+  };
+
+  const handleToggleFollowup = async (followup: ContactFollowup) => {
+    if (!selectedContact) return;
+    try {
+      const updated = await api.updateFollowup(selectedContact.id, followup.id, {
+        completed: !followup.completed,
+      });
+      setFollowups(prev => prev.map(f => (f.id === followup.id ? updated : f)));
+    } catch (err) {
+      console.error('Erro ao atualizar follow-up:', err);
+    }
+  };
+
+  const handleDeleteFollowup = async (followupId: string) => {
+    if (!selectedContact) return;
+    try {
+      await api.deleteFollowup(selectedContact.id, followupId);
+      setFollowups(prev => prev.filter(f => f.id !== followupId));
+    } catch (err) {
+      console.error('Erro ao excluir follow-up:', err);
+    }
+  };
+
+  const getFollowupStatus = (date: string, completed: number) => {
+    if (completed) return 'completed';
+    const today = new Date().toISOString().split('T')[0];
+    if (date < today) return 'overdue';
+    if (date === today) return 'today';
+    const weekFromNow = addDaysToDate(7);
+    if (date <= weekFromNow) return 'soon';
+    return 'future';
+  };
+
+  const formatFollowupDate = (dateStr: string) => {
+    const date = new Date(dateStr + 'T00:00:00');
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const diffTime = date.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) return 'Hoje';
+    if (diffDays === 1) return 'Amanhã';
+    if (diffDays === -1) return 'Ontem';
+    if (diffDays < -1) return `Há ${Math.abs(diffDays)} dias`;
+    if (diffDays <= 7) return `Em ${diffDays} dias`;
+
+    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
   };
 
   const formatDate = (dateStr: string) => {
@@ -429,6 +522,92 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
                       <span>{selectedContact.company}</span>
                     </div>
                   )}
+                </div>
+
+                {/* Follow-ups */}
+                <div className="contacts-panel__followups">
+                  <div className="contacts-panel__followups-header">
+                    <h4>
+                      <Bell size={16} />
+                      Follow-ups
+                    </h4>
+                    <div className="contacts-panel__followups-quick">
+                      <button onClick={() => handleQuickFollowup(7)} className="btn btn-ghost btn-xs">7d</button>
+                      <button onClick={() => handleQuickFollowup(15)} className="btn btn-ghost btn-xs">15d</button>
+                      <button onClick={() => handleQuickFollowup(30)} className="btn btn-ghost btn-xs">30d</button>
+                      <button onClick={() => handleQuickFollowup(90)} className="btn btn-ghost btn-xs">3m</button>
+                      <button onClick={() => handleQuickFollowup(180)} className="btn btn-ghost btn-xs">6m</button>
+                      <button onClick={() => setShowFollowupForm(true)} className="btn btn-ghost btn-xs">
+                        <Calendar size={12} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {showFollowupForm && (
+                    <div className="contacts-panel__followup-form">
+                      <input
+                        type="date"
+                        value={followupDate}
+                        onChange={e => setFollowupDate(e.target.value)}
+                        className="input input-sm"
+                        min={new Date().toISOString().split('T')[0]}
+                      />
+                      <input
+                        type="text"
+                        value={followupDescription}
+                        onChange={e => setFollowupDescription(e.target.value)}
+                        className="input input-sm"
+                        placeholder="Descrição (opcional)"
+                      />
+                      <div className="contacts-panel__followup-form-actions">
+                        <button onClick={() => setShowFollowupForm(false)} className="btn btn-ghost btn-xs">
+                          Cancelar
+                        </button>
+                        <button onClick={handleCreateFollowup} disabled={!followupDate} className="btn btn-primary btn-xs">
+                          Adicionar
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="contacts-panel__followups-list">
+                    {followups.map(followup => {
+                      const status = getFollowupStatus(followup.date, followup.completed);
+                      return (
+                        <div
+                          key={followup.id}
+                          className={`contacts-panel__followup contacts-panel__followup--${status}`}
+                        >
+                          <button
+                            onClick={() => handleToggleFollowup(followup)}
+                            className={`contacts-panel__followup-check ${followup.completed ? 'contacts-panel__followup-check--done' : ''}`}
+                          >
+                            {followup.completed ? <Check size={12} /> : null}
+                          </button>
+                          <div className="contacts-panel__followup-content">
+                            <span className="contacts-panel__followup-date">
+                              <Clock size={12} />
+                              {formatFollowupDate(followup.date)}
+                            </span>
+                            {followup.description && (
+                              <span className="contacts-panel__followup-desc">{followup.description}</span>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => handleDeleteFollowup(followup.id)}
+                            className="contacts-panel__followup-delete"
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      );
+                    })}
+                    {followups.length === 0 && (
+                      <p className="contacts-panel__followups-empty">
+                        Nenhum follow-up agendado
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 {/* Histórico de notas */}

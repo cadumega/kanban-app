@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { Column, Task, Category, CreateTaskPayload, UpdateTaskPayload, MoveTaskPayload, Contact, ContactNote, ChecklistItem, Project, User, LoginResponse } from '../types';
+import type { Column, Task, Category, CreateTaskPayload, UpdateTaskPayload, MoveTaskPayload, Contact, ContactNote, ContactFollowup, ChecklistItem, Project, User, LoginResponse } from '../types';
 
 export const api = axios.create({
   baseURL: '/api',
@@ -191,6 +191,35 @@ export const getContactImageUrl = (imagePath: string): string => {
 
 export const deleteContactNote = async (contactId: string, noteId: string): Promise<void> => {
   await api.delete(`/contacts/${contactId}/notes/${noteId}`);
+};
+
+// Contact Follow-ups
+export const getPendingFollowups = async (): Promise<ContactFollowup[]> => {
+  const { data } = await api.get('/contacts/followups/pending');
+  return data;
+};
+
+export const getContactFollowups = async (contactId: string): Promise<ContactFollowup[]> => {
+  const { data } = await api.get(`/contacts/${contactId}/followups`);
+  return data;
+};
+
+export const createFollowup = async (contactId: string, date: string, description?: string): Promise<ContactFollowup> => {
+  const { data } = await api.post(`/contacts/${contactId}/followups`, { date, description });
+  return data;
+};
+
+export const updateFollowup = async (
+  contactId: string,
+  followupId: string,
+  updates: { date?: string; description?: string; completed?: boolean }
+): Promise<ContactFollowup> => {
+  const { data } = await api.put(`/contacts/${contactId}/followups/${followupId}`, updates);
+  return data;
+};
+
+export const deleteFollowup = async (contactId: string, followupId: string): Promise<void> => {
+  await api.delete(`/contacts/${contactId}/followups/${followupId}`);
 };
 
 // Checklist (Subtarefas)

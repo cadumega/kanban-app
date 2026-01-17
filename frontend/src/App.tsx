@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Loader2, RefreshCw, Plus, PanelLeft, Users, FolderKanban, Settings, LogOut } from 'lucide-react';
+import { Loader2, RefreshCw, Plus, PanelLeft, Users, FolderKanban, Settings, LogOut, Bell } from 'lucide-react';
 import { Board } from './components/Board/Board';
 import { Sidebar } from './components/Sidebar/Sidebar';
 import { TaskModal } from './components/TaskModal/TaskModal';
 import { ContactsPanel } from './components/Contacts/ContactsPanel';
+import { FollowupsPanel } from './components/Contacts/FollowupsPanel';
 import { RoadmapPanel } from './components/Roadmap/RoadmapPanel';
 import { Login } from './components/Login/Login';
 import { AdminPanel } from './components/AdminPanel/AdminPanel';
@@ -101,6 +102,7 @@ function AuthenticatedApp({ user, onLogout }: { user: User; onLogout: () => void
   const [selectedColumnId, setSelectedColumnId] = useState<string>('');
   const [sidebarVisible, setSidebarVisible] = useState(true);
   const [contactsOpen, setContactsOpen] = useState(false);
+  const [followupsOpen, setFollowupsOpen] = useState(false);
   const [roadmapOpen, setRoadmapOpen] = useState(false);
   const [adminPanelOpen, setAdminPanelOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(() => {
@@ -271,6 +273,9 @@ function AuthenticatedApp({ user, onLogout }: { user: User; onLogout: () => void
                 <Users size={16} />
                 CRM
               </button>
+              <button onClick={() => setFollowupsOpen(true)} className="btn btn-ghost" title="Follow-ups pendentes">
+                <Bell size={16} />
+              </button>
               {user.role === 'master' && (
                 <button onClick={() => setAdminPanelOpen(true)} className="btn btn-ghost" title="Admin">
                   <Settings size={16} />
@@ -333,6 +338,14 @@ function AuthenticatedApp({ user, onLogout }: { user: User; onLogout: () => void
       )}
 
       <ContactsPanel isOpen={contactsOpen} onClose={() => setContactsOpen(false)} />
+      <FollowupsPanel
+        isOpen={followupsOpen}
+        onClose={() => setFollowupsOpen(false)}
+        onOpenContact={(contactId) => {
+          setFollowupsOpen(false);
+          setContactsOpen(true);
+        }}
+      />
       <RoadmapPanel isOpen={roadmapOpen} onClose={() => setRoadmapOpen(false)} />
       {user.role === 'master' && (
         <AdminPanel isOpen={adminPanelOpen} onClose={() => setAdminPanelOpen(false)} />

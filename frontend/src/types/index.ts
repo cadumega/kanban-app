@@ -88,6 +88,7 @@ export interface Contact {
   role: string | null;
   notes_count?: number;
   notes?: ContactNote[];
+  followups?: ContactFollowup[];
   created_at: string;
   updated_at: string;
 }
@@ -98,6 +99,19 @@ export interface ContactNote {
   content: string | null;
   image_path: string | null;
   created_at: string;
+}
+
+export interface ContactFollowup {
+  id: string;
+  contact_id: string;
+  date: string;
+  description: string;
+  completed: number;
+  completed_at: string | null;
+  created_at: string;
+  // Populated from join
+  contact_name?: string;
+  contact_company?: string;
 }
 
 export interface ChecklistItem {
