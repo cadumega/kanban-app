@@ -17,8 +17,10 @@ import {
   Clock,
   Check,
   Bell,
+  Search,
+  Tag,
 } from 'lucide-react';
-import type { Contact, ContactFollowup } from '../../types';
+import type { Contact, ContactFollowup, ContactTag } from '../../types';
 import * as api from '../../services/api';
 import './ContactsPanel.css';
 
@@ -26,6 +28,21 @@ interface ContactsPanelProps {
   isOpen: boolean;
   onClose: () => void;
 }
+
+// Tag options for funnel stages
+const TAG_OPTIONS: { value: ContactTag; label: string; color: string }[] = [
+  { value: null, label: 'Sem tag', color: '#71717A' },
+  { value: 'lead', label: 'Lead', color: '#3B82F6' },
+  { value: 'qualificado', label: 'Qualificado', color: '#8B5CF6' },
+  { value: 'proposta', label: 'Proposta', color: '#F59E0B' },
+  { value: 'negociacao', label: 'Negociação', color: '#EC4899' },
+  { value: 'cliente', label: 'Cliente', color: '#22C55E' },
+  { value: 'perdido', label: 'Perdido', color: '#EF4444' },
+];
+
+const getTagInfo = (tag: ContactTag) => {
+  return TAG_OPTIONS.find(t => t.value === tag) || TAG_OPTIONS[0];
+};
 
 export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -36,6 +53,9 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [sendingNote, setSendingNote] = useState(false);
+
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Follow-up state
   const [followups, setFollowups] = useState<ContactFollowup[]>([]);
@@ -50,6 +70,7 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
     phone: '',
     company: '',
     role: '',
+    tag: null as ContactTag,
   });
 
   useEffect(() => {
@@ -87,8 +108,21 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
     loadContactDetails(contact.id);
   };
 
+  // Filter contacts based on search query
+  const filteredContacts = contacts.filter(contact => {
+    if (!searchQuery.trim()) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      contact.name.toLowerCase().includes(query) ||
+      contact.company?.toLowerCase().includes(query) ||
+      contact.email?.toLowerCase().includes(query) ||
+      contact.role?.toLowerCase().includes(query) ||
+      getTagInfo(contact.tag).label.toLowerCase().includes(query)
+    );
+  });
+
   const handleNewContact = () => {
-    setFormData({ name: '', email: '', phone: '', company: '', role: '' });
+    setFormData({ name: '', email: '', phone: '', company: '', role: '', tag: null });
     setIsEditing(true);
     setSelectedContact(null);
   };
@@ -101,6 +135,7 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
         phone: selectedContact.phone || '',
         company: selectedContact.company || '',
         role: selectedContact.role || '',
+        tag: selectedContact.tag,
       });
       setIsEditing(true);
     }
@@ -327,15 +362,32 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
           {/* Lista de Contatos */}
           <div className="contacts-panel__list">
             <div className="contacts-panel__list-header">
-              <span>{contacts.length} contatos</span>
+              <span>{filteredContacts.length} contatos</span>
               <button onClick={handleNewContact} className="btn btn-primary btn-sm">
                 <Plus size={14} />
                 Novo
               </button>
             </div>
 
+            {/* Search input */}
+            <div className="contacts-panel__search">
+              <Search size={14} />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Buscar contatos..."
+                className="contacts-panel__search-input"
+              />
+              {searchQuery && (
+                <button onClick={() => setSearchQuery('')} className="contacts-panel__search-clear">
+                  <X size={12} />
+                </button>
+              )}
+            </div>
+
             <div className="contacts-panel__list-items">
-              {contacts.map(contact => (
+              {filteredContacts.map(contact => (
                 <button
                   key={contact.id}
                   onClick={() => handleSelectContact(contact)}
@@ -347,7 +399,17 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
                     {contact.name.charAt(0).toUpperCase()}
                   </div>
                   <div className="contacts-panel__list-item-info">
-                    <span className="contacts-panel__list-item-name">{contact.name}</span>
+                    <div className="contacts-panel__list-item-name-row">
+                      <span className="contacts-panel__list-item-name">{contact.name}</span>
+                      {contact.tag && (
+                        <span
+                          className="contacts-panel__list-item-tag"
+                          style={{ background: getTagInfo(contact.tag).color }}
+                        >
+                          {getTagInfo(contact.tag).label}
+                        </span>
+                      )}
+                    </div>
                     {contact.company && (
                       <span className="contacts-panel__list-item-company">{contact.company}</span>
                     )}
@@ -361,7 +423,7 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
                 </button>
               ))}
 
-              {contacts.length === 0 && !loading && (
+              {filteredContacts.length === 0 && !loading && (
                 <div className="contacts-panel__empty">
                   <User size={32} />
                   <p>Nenhum contato ainda</p>
@@ -443,6 +505,30 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
                     className="input"
                     placeholder="Cargo/Função"
                   />
+                </div>
+
+                <div className="form-group">
+                  <label className="label">
+                    <Tag size={14} /> Etapa do Funil
+                  </label>
+                  <div className="contacts-panel__tag-selector">
+                    {TAG_OPTIONS.map(option => (
+                      <button
+                        key={option.value || 'none'}
+                        type="button"
+                        onClick={() => setFormData({ ...formData, tag: option.value })}
+                        className={`contacts-panel__tag-option ${formData.tag === option.value ? 'contacts-panel__tag-option--active' : ''}`}
+                        style={{
+                          '--tag-color': option.color,
+                          borderColor: formData.tag === option.value ? option.color : undefined,
+                          background: formData.tag === option.value ? `${option.color}15` : undefined,
+                        } as React.CSSProperties}
+                      >
+                        <span className="contacts-panel__tag-dot" style={{ background: option.color }} />
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 <div className="contacts-panel__form-actions">

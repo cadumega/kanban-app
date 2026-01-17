@@ -71,7 +71,7 @@ router.get('/:id', (req, res) => {
 // Create contact
 router.post('/', (req, res) => {
   const db = req.db;
-  const { name, email, phone, company, role } = req.body;
+  const { name, email, phone, company, role, tag } = req.body;
 
   if (!name?.trim()) {
     return res.status(400).json({ error: 'Nome é obrigatório' });
@@ -80,9 +80,9 @@ router.post('/', (req, res) => {
   const id = uuidv4();
 
   db.prepare(`
-    INSERT INTO contacts (id, name, email, phone, company, role)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `).run(id, name.trim(), email || null, phone || null, company || null, role || null);
+    INSERT INTO contacts (id, name, email, phone, company, role, tag)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).run(id, name.trim(), email || null, phone || null, company || null, role || null, tag || null);
 
   const contact = db.prepare('SELECT * FROM contacts WHERE id = ?').get(id);
   res.status(201).json(contact);
@@ -92,7 +92,7 @@ router.post('/', (req, res) => {
 router.put('/:id', (req, res) => {
   const db = req.db;
   const { id } = req.params;
-  const { name, email, phone, company, role } = req.body;
+  const { name, email, phone, company, role, tag } = req.body;
 
   const existing = db.prepare('SELECT * FROM contacts WHERE id = ?').get(id);
   if (!existing) {
@@ -101,14 +101,15 @@ router.put('/:id', (req, res) => {
 
   db.prepare(`
     UPDATE contacts
-    SET name = ?, email = ?, phone = ?, company = ?, role = ?, updated_at = CURRENT_TIMESTAMP
+    SET name = ?, email = ?, phone = ?, company = ?, role = ?, tag = ?, updated_at = CURRENT_TIMESTAMP
     WHERE id = ?
   `).run(
     name?.trim() || existing.name,
-    email || existing.email,
-    phone || existing.phone,
-    company || existing.company,
-    role || existing.role,
+    email !== undefined ? email : existing.email,
+    phone !== undefined ? phone : existing.phone,
+    company !== undefined ? company : existing.company,
+    role !== undefined ? role : existing.role,
+    tag !== undefined ? tag : existing.tag,
     id
   );
 

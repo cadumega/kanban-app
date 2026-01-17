@@ -66,6 +66,39 @@
   color: var(--text-secondary);
 }
 
+/* Search */
+.contacts-panel__search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+.contacts-panel__search-input {
+  flex: 1;
+  border: none;
+  background: none;
+  font-size: 13px;
+  color: var(--text-primary);
+  outline: none;
+}
+
+.contacts-panel__search-input::placeholder {
+  color: var(--text-muted);
+}
+
+.contacts-panel__search-clear {
+  padding: 4px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.contacts-panel__search-clear:hover {
+  color: var(--text-primary);
+}
+
 .contacts-panel__list-items {
   flex: 1;
   overflow-y: auto;
@@ -109,13 +142,30 @@
   min-width: 0;
 }
 
+.contacts-panel__list-item-name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .contacts-panel__list-item-name {
-  display: block;
   font-weight: 500;
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.contacts-panel__list-item-tag {
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  color: white;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .contacts-panel__list-item-company {
@@ -656,4 +706,43 @@
   color: var(--text-muted);
   font-size: 12px;
   padding: 12px;
+}
+
+/* Tag selector in form */
+.contacts-panel__tag-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.contacts-panel__tag-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: var(--bg-column);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.contacts-panel__tag-option:hover {
+  background: var(--bg-secondary);
+  border-color: var(--text-muted);
+}
+
+.contacts-panel__tag-option--active {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.contacts-panel__tag-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }

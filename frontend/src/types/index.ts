@@ -79,6 +79,8 @@ export interface MoveTaskPayload {
 }
 
 // CRM Types
+export type ContactTag = 'lead' | 'qualificado' | 'proposta' | 'negociacao' | 'cliente' | 'perdido' | null;
+
 export interface Contact {
   id: string;
   name: string;
@@ -86,6 +88,7 @@ export interface Contact {
   phone: string | null;
   company: string | null;
   role: string | null;
+  tag: ContactTag;
   notes_count?: number;
   notes?: ContactNote[];
   followups?: ContactFollowup[];

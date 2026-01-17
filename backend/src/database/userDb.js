@@ -65,6 +65,14 @@ function migrateUserDb(db) {
     console.log('Migration: Added image_path column to contact_notes');
   }
 
+  // Check if tag column exists in contacts
+  const contactsInfo = db.prepare("PRAGMA table_info(contacts)").all();
+  const hasTag = contactsInfo.some(col => col.name === 'tag');
+  if (!hasTag) {
+    db.exec('ALTER TABLE contacts ADD COLUMN tag TEXT DEFAULT NULL');
+    console.log('Migration: Added tag column to contacts');
+  }
+
   // Check if contact_followups table exists
   const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='contact_followups'").get();
   if (!tables) {
@@ -152,6 +160,7 @@ function initializeUserDb(db) {
       phone TEXT,
       company TEXT,
       role TEXT,
+      tag TEXT DEFAULT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
