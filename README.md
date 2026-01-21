@@ -1,18 +1,23 @@
 # Kanban App + Mini CRM
 
-Sistema de gerenciamento de tarefas estilo Kanban com CRM integrado e suporte multi-usuário.
+Sistema de gerenciamento de tarefas estilo Kanban com CRM integrado, follow-ups e suporte multi-usuário.
 
 **Repositório:** https://github.com/cadumega/kanban-app
+
+**Produção:**
+- Frontend: https://kanban-app-five-snowy.vercel.app
+- Backend: https://kanban-api-cadu.fly.dev
 
 ---
 
 ## Novidades Recentes
 
-- **Sistema Multi-Usuário** - Cada usuário tem seu próprio banco de dados isolado
-- **Autenticação JWT** - Login seguro com tokens
-- **Painel Administrativo** - Usuário master pode gerenciar outros usuários
-- **Upload de Imagens no CRM** - Adicione imagens às notas de contatos
-- **Deploy no Render** - Configuração pronta para produção
+- **Follow-ups no CRM** - Agende lembretes para contatar clientes (7d, 15d, 30d, 3m, 6m ou data personalizada)
+- **Painel de Follow-ups** - Veja todos os follow-ups pendentes organizados por urgência
+- **Busca de Contatos** - Filtre contatos por nome, empresa, email ou cargo
+- **Tags de Funil** - Classifique contatos: Lead, Qualificado, Proposta, Negociação, Cliente, Perdido
+- **Deploy no Fly.io** - Backend com volume persistente (dados não se perdem!)
+- **Deploy na Vercel** - Frontend grátis e rápido
 
 ---
 
@@ -68,9 +73,13 @@ Este é o usuário master que pode criar outros usuários.
 
 ### Mini CRM
 - Cadastro de contatos (nome, email, telefone, empresa, cargo)
+- **Busca de contatos** - Filtre por palavra-chave
+- **Tags de funil** - Lead, Qualificado, Proposta, Negociação, Cliente, Perdido
 - Histórico de notas por contato
 - **Upload de imagens** nas notas (até 5MB)
-- Integração com WhatsApp (link direto para ligar/mensagem)
+- **Follow-ups** - Agende lembretes (7d, 15d, 30d, 3m, 6m ou personalizado)
+- **Painel de Follow-ups** - Veja todos pendentes por urgência
+- Integração com WhatsApp (link direto)
 - Timeline de interações
 
 ### Business Roadmap
@@ -89,30 +98,36 @@ Este é o usuário master que pode criar outros usuários.
 
 ---
 
-## Onde ficam seus dados
+## Deploy em Produção
 
-| O que | Caminho |
-|-------|---------|
-| **Banco de usuários** | `backend/data/users.db` |
-| **Banco do usuário** | `backend/data/users/{email}/kanban.db` |
-| **Imagens do usuário** | `backend/data/users/{email}/images/` |
-| **Backups** | `~/kanban-backups/` |
+O projeto está configurado para rodar gratuitamente:
+
+| Serviço | O que hospeda | Custo |
+|---------|---------------|-------|
+| **Vercel** | Frontend (React) | Grátis |
+| **Fly.io** | Backend (Node.js + SQLite) | Grátis |
+
+**Importante:** Os dados são persistentes! O Fly.io usa um volume de 1GB que não se perde quando o servidor reinicia.
+
+Para detalhes de como fazer o deploy, veja: **[DEPLOY-FLYIO-VERCEL.md](./DEPLOY-FLYIO-VERCEL.md)**
 
 ---
 
-## Deploy no Render
+## Onde ficam seus dados
 
-O projeto está configurado para deploy no Render com o arquivo `render.yaml`.
+### Local (desenvolvimento)
+| O que | Caminho |
+|-------|---------|
+| **Banco de usuários** | `backend/data/users.db` |
+| **Banco do usuário** | `backend/data/{email}/kanban.db` |
+| **Imagens do usuário** | `backend/data/{email}/images/` |
 
-### Passos:
-
-1. Suba o código para o GitHub
-2. Crie uma conta no [Render](https://render.com)
-3. Conecte o repositório
-4. O Render detecta o `render.yaml` automaticamente
-5. Aguarde o deploy (~5-10 min)
-
-O disco persistente de 1GB é configurado automaticamente para manter os dados SQLite.
+### Produção (Fly.io)
+| O que | Caminho |
+|-------|---------|
+| **Volume persistente** | `/data/` (1GB) |
+| **Bancos de dados** | `/data/{email}/kanban.db` |
+| **Imagens** | `/data/{email}/images/` |
 
 ---
 
@@ -122,14 +137,16 @@ O disco persistente de 1GB é configurado automaticamente para manter os dados S
 # Iniciar tudo (dev)
 ./iniciar.sh
 
-# Fazer backup manual
-./backup.sh
-
 # Build para produção
 cd frontend && npm run build
-cd backend && npm start
 
-# Parar servidores
+# Deploy do backend (Fly.io)
+cd backend && fly deploy
+
+# Ver logs do Fly.io
+fly logs
+
+# Parar servidores locais
 pkill -f "node.*kanban"
 ```
 
@@ -142,6 +159,7 @@ pkill -f "node.*kanban"
 - **Autenticação:** JWT, bcryptjs
 - **Upload:** Multer
 - **Ícones:** Lucide React
+- **Deploy:** Fly.io (backend), Vercel (frontend)
 
 ---
 
@@ -149,11 +167,10 @@ pkill -f "node.*kanban"
 
 | Arquivo | Descrição |
 |---------|-----------|
-| **GUIA-COMPLETO.md** | Guia didático completo do projeto (recomendado!) |
+| **[GUIA-COMPLETO.md](./GUIA-COMPLETO.md)** | Guia didático completo do projeto |
+| **[DEPLOY-FLYIO-VERCEL.md](./DEPLOY-FLYIO-VERCEL.md)** | Como publicar no Fly.io + Vercel |
 | `PROJETO-DOCUMENTACAO.md` | Documentação técnica |
 | `BACKEND-EXPLICADO.md` | Explicação do backend |
-| `DEPLOY-EXPLICADO.md` | Como publicar online |
-| `render.yaml` | Configuração do Render |
 
 ---
 
@@ -164,36 +181,34 @@ kanban-app/
 ├── backend/
 │   ├── src/
 │   │   ├── database/     # Configuração SQLite
-│   │   ├── middleware/   # Autenticação
+│   │   ├── middleware/   # Autenticação JWT
 │   │   └── routes/       # Rotas da API
-│   ├── data/             # Bancos de dados
-│   │   ├── users.db      # Usuários do sistema
-│   │   └── users/        # Pasta por usuário
-│   │       └── email@example.com/
-│   │           ├── kanban.db
-│   │           └── images/
-│   └── public/           # Frontend compilado
+│   ├── data/             # Bancos de dados (local)
+│   ├── Dockerfile        # Config para Fly.io
+│   └── fly.toml          # Config do Fly.io
 │
 ├── frontend/
-│   └── src/
-│       ├── components/
-│       │   ├── Board/
-│       │   ├── Contacts/     # CRM
-│       │   ├── Login/        # Tela de login
-│       │   ├── AdminPanel/   # Painel admin
-│       │   └── ...
-│       ├── services/
-│       └── types/
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── Board/
+│   │   │   ├── Contacts/     # CRM + Follow-ups
+│   │   │   ├── Roadmap/      # Business Roadmap
+│   │   │   ├── Login/
+│   │   │   └── AdminPanel/
+│   │   ├── services/
+│   │   └── types/
+│   ├── .env.production   # URL da API em produção
+│   └── vite.config.ts
 │
-├── render.yaml           # Config do Render
-├── iniciar.sh            # Script para dev
-└── GUIA-COMPLETO.md      # Documentação didática
+├── DEPLOY-FLYIO-VERCEL.md
+└── README.md
 ```
 
 ---
 
 ## Links
 
-- **App local:** http://localhost:5173
+- **App Produção:** https://kanban-app-five-snowy.vercel.app
+- **API Produção:** https://kanban-api-cadu.fly.dev
 - **GitHub:** https://github.com/cadumega/kanban-app
-- **Render:** (sua URL após deploy)
+- **App Local:** http://localhost:5173
