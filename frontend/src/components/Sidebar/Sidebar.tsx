@@ -14,6 +14,7 @@ import {
   Moon,
   Sun,
   Download,
+  Upload,
   FileJson,
   FileSpreadsheet,
   PanelLeftClose,
@@ -42,6 +43,7 @@ interface SidebarProps {
   onToggleDarkMode: () => void;
   onExportJSON: () => void;
   onExportCSV: () => void;
+  onImportJSON: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onToggleSidebar: () => void;
   onFilterByPerson: (person: string) => void;
 }
@@ -59,6 +61,7 @@ export function Sidebar({
   onToggleDarkMode,
   onExportJSON,
   onExportCSV,
+  onImportJSON,
   onToggleSidebar,
   onFilterByPerson,
 }: SidebarProps) {
@@ -507,6 +510,17 @@ export function Sidebar({
             </>
           )}
         </div>
+
+        <label className="sidebar__footer-btn sidebar__import-btn">
+          <Upload size={18} />
+          <span>Importar</span>
+          <input
+            type="file"
+            accept=".json"
+            onChange={onImportJSON}
+            style={{ display: 'none' }}
+          />
+        </label>
       </div>
     </aside>
   );

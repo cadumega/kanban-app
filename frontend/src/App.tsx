@@ -133,6 +133,35 @@ function AuthenticatedApp({ user, onLogout }: { user: User; onLogout: () => void
     a.click();
   };
 
+  const handleImportJSON = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+
+      if (!data.columns || !data.tasks) {
+        alert('Arquivo inválido. Deve ser um export do Kanban.');
+        return;
+      }
+
+      if (!confirm(`Importar dados?\n\nIsso vai SUBSTITUIR todos os dados atuais:\n- ${data.columns?.length || 0} colunas\n- ${data.categories?.length || 0} categorias\n- ${data.tasks?.length || 0} tarefas\n- ${data.checklists?.length || 0} itens de checklist\n- ${data.projects?.length || 0} projetos\n\nDeseja continuar?`)) {
+        return;
+      }
+
+      const response = await api.post('/tasks/import/json', data);
+      alert(`Importação concluída!\n\n${response.data.message}`);
+      window.location.reload();
+    } catch (error) {
+      console.error('Erro ao importar:', error);
+      alert('Erro ao importar arquivo. Verifique se é um JSON válido.');
+    }
+
+    // Clear input
+    event.target.value = '';
+  };
+
   const handleFilterByPerson = (person: string) => {
     setFilters({ ...filters, person });
   };
@@ -242,6 +271,7 @@ function AuthenticatedApp({ user, onLogout }: { user: User; onLogout: () => void
           onToggleDarkMode={() => setDarkMode(!darkMode)}
           onExportJSON={handleExportJSON}
           onExportCSV={handleExportCSV}
+          onImportJSON={handleImportJSON}
           onToggleSidebar={() => setSidebarVisible(false)}
           onFilterByPerson={handleFilterByPerson}
         />

@@ -300,7 +300,7 @@ router.delete('/:id', (req, res) => {
   }
 });
 
-// Export tasks as JSON
+// Export tasks as JSON (complete backup)
 router.get('/export/json', (req, res) => {
   try {
     const db = req.db;
@@ -313,16 +313,126 @@ router.get('/export/json', (req, res) => {
       ORDER BY col.position ASC, t.position ASC
     `).all();
     const categories = db.prepare('SELECT * FROM categories').all();
+    const checklists = db.prepare('SELECT * FROM task_checklist ORDER BY task_id, position ASC').all();
+    const projects = db.prepare('SELECT * FROM projects').all();
 
     res.json({
       exported_at: new Date().toISOString(),
+      version: '2.0',
       columns,
       categories,
-      tasks
+      tasks,
+      checklists,
+      projects
     });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Erro ao exportar dados' });
+  }
+});
+
+// Import tasks from JSON (restore backup)
+router.post('/import/json', (req, res) => {
+  try {
+    const db = req.db;
+    const { columns, categories, tasks, checklists, projects } = req.body;
+
+    if (!columns || !tasks) {
+      return res.status(400).json({ error: 'Arquivo inválido. Deve conter columns e tasks.' });
+    }
+
+    // Use transaction for safety
+    const importData = db.transaction(() => {
+      // Clear existing data (in reverse order of dependencies)
+      db.prepare('DELETE FROM task_checklist').run();
+      db.prepare('DELETE FROM tasks').run();
+      db.prepare('DELETE FROM categories').run();
+      db.prepare('DELETE FROM columns').run();
+      if (projects) {
+        db.prepare('DELETE FROM projects').run();
+      }
+
+      // Import columns
+      const insertColumn = db.prepare(
+        'INSERT INTO columns (id, title, position, color, created_at) VALUES (?, ?, ?, ?, ?)'
+      );
+      for (const col of columns) {
+        insertColumn.run(col.id, col.title, col.position, col.color, col.created_at || new Date().toISOString());
+      }
+
+      // Import categories
+      if (categories && categories.length > 0) {
+        const insertCategory = db.prepare(
+          'INSERT INTO categories (id, name, color) VALUES (?, ?, ?)'
+        );
+        for (const cat of categories) {
+          insertCategory.run(cat.id, cat.name, cat.color);
+        }
+      }
+
+      // Import projects
+      if (projects && projects.length > 0) {
+        const insertProject = db.prepare(
+          'INSERT INTO projects (id, name, description, color, status, start_date, end_date, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        );
+        for (const proj of projects) {
+          insertProject.run(
+            proj.id, proj.name, proj.description || '', proj.color || '#6366F1',
+            proj.status || 'active', proj.start_date, proj.end_date,
+            proj.created_at || new Date().toISOString(),
+            proj.updated_at || new Date().toISOString()
+          );
+        }
+      }
+
+      // Import tasks
+      const insertTask = db.prepare(`
+        INSERT INTO tasks (id, title, description, column_id, position, priority, category_id, month, assignee, dependent, value, points, start_date, project, blocked, blocked_by, blocked_reason, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      for (const task of tasks) {
+        insertTask.run(
+          task.id, task.title, task.description || '', task.column_id, task.position,
+          task.priority || 'media', task.category_id, task.month,
+          task.assignee, task.dependent, task.value || 0, task.points || 0,
+          task.start_date, task.project, task.blocked || 0,
+          task.blocked_by, task.blocked_reason,
+          task.created_at || new Date().toISOString(),
+          task.updated_at || new Date().toISOString()
+        );
+      }
+
+      // Import checklists
+      if (checklists && checklists.length > 0) {
+        const insertChecklist = db.prepare(
+          'INSERT INTO task_checklist (id, task_id, text, completed, position, created_at) VALUES (?, ?, ?, ?, ?, ?)'
+        );
+        for (const item of checklists) {
+          insertChecklist.run(
+            item.id, item.task_id, item.text, item.completed || 0, item.position,
+            item.created_at || new Date().toISOString()
+          );
+        }
+      }
+
+      return {
+        columns: columns.length,
+        categories: categories?.length || 0,
+        tasks: tasks.length,
+        checklists: checklists?.length || 0,
+        projects: projects?.length || 0
+      };
+    });
+
+    const result = importData();
+    res.json({
+      success: true,
+      message: 'Dados importados com sucesso!',
+      imported: result
+    });
+  } catch (error) {
+    console.error('Erro ao importar:', error);
+    res.status(500).json({ error: 'Erro ao importar dados: ' + error.message });
   }
 });
 
