@@ -27,9 +27,9 @@ interface RoadmapTask {
 
 interface RoadmapProject {
   name: string;
-  tasks: RoadmapTask[];
-  task_count: number;
-  completed_tasks: number;
+  tasks?: RoadmapTask[];
+  task_count?: number;
+  completed_tasks?: number;
   start_date: string | null;
   end_date: string | null;
   color: string;
@@ -224,7 +224,7 @@ export function RoadmapPanel({ isOpen, onClose }: RoadmapPanelProps) {
           </h2>
           <div className="roadmap-panel__header-actions">
             <span className="roadmap-panel__summary">
-              {projects.length} projetos | {projects.reduce((sum, p) => sum + p.task_count, 0)} tarefas
+              {projects.length} projetos | {projects.reduce((sum, p) => sum + (p.task_count || 0), 0)} tarefas
             </span>
             <button onClick={onClose} className="btn btn-icon btn-ghost">
               <X size={18} />
@@ -350,7 +350,7 @@ export function RoadmapPanel({ isOpen, onClose }: RoadmapPanelProps) {
                     </div>
 
                     {/* Task Rows */}
-                    {isExpanded && project.tasks.map((task) => {
+                    {isExpanded && project.tasks?.map((task) => {
                       const bar = getTaskBar(task);
 
                       return (

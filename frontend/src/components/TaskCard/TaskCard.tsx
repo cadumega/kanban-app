@@ -10,7 +10,6 @@ function getDeadlineStatus(startDate: string | null, points: number) {
 
   const start = new Date(startDate);
   start.setHours(0, 0, 0, 0);
-  const deadline = new Date(start.getTime() + points * 24 * 60 * 60 * 1000);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 

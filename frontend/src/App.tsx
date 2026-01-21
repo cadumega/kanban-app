@@ -18,7 +18,6 @@ function App() {
     return stored ? JSON.parse(stored) : null;
   });
   const [authLoading, setAuthLoading] = useState(true);
-  const [adminPanelOpen, setAdminPanelOpen] = useState(false);
 
   // Check if token is still valid on mount
   useEffect(() => {
@@ -341,7 +340,7 @@ function AuthenticatedApp({ user, onLogout }: { user: User; onLogout: () => void
       <FollowupsPanel
         isOpen={followupsOpen}
         onClose={() => setFollowupsOpen(false)}
-        onOpenContact={(contactId) => {
+        onOpenContact={(_contactId) => {
           setFollowupsOpen(false);
           setContactsOpen(true);
         }}
