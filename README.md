@@ -109,7 +109,7 @@ O projeto está configurado para rodar gratuitamente:
 
 **Importante:** Os dados são persistentes! O Fly.io usa um volume de 1GB que não se perde quando o servidor reinicia.
 
-Para detalhes de como fazer o deploy, veja: **[DEPLOY-FLYIO-VERCEL.md](./DEPLOY-FLYIO-VERCEL.md)**
+Para detalhes de como fazer o deploy, veja: **[04-DEPLOY.md](./04-DEPLOY.md)**
 
 ---
 
@@ -165,12 +165,12 @@ pkill -f "node.*kanban"
 
 ## Documentação
 
-| Arquivo | Descrição |
-|---------|-----------|
-| **[GUIA-COMPLETO.md](./GUIA-COMPLETO.md)** | Guia didático completo do projeto |
-| **[DEPLOY-FLYIO-VERCEL.md](./DEPLOY-FLYIO-VERCEL.md)** | Como publicar no Fly.io + Vercel |
-| `PROJETO-DOCUMENTACAO.md` | Documentação técnica |
-| `BACKEND-EXPLICADO.md` | Explicação do backend |
+| # | Arquivo | Descrição |
+|---|---------|-----------|
+| 1 | **[01-GUIA-COMPLETO.md](./01-GUIA-COMPLETO.md)** | Tutorial didático (conceitos, arquitetura) |
+| 2 | **[02-BACKEND.md](./02-BACKEND.md)** | Como funciona o backend (rotas, banco, auth) |
+| 3 | **[03-DOCUMENTACAO-TECNICA.md](./03-DOCUMENTACAO-TECNICA.md)** | Detalhes técnicos (tipos, componentes) |
+| 4 | **[04-DEPLOY.md](./04-DEPLOY.md)** | Como publicar (Fly.io + Vercel) |
 
 ---
 
@@ -200,7 +200,10 @@ kanban-app/
 │   ├── .env.production   # URL da API em produção
 │   └── vite.config.ts
 │
-├── DEPLOY-FLYIO-VERCEL.md
+├── 01-GUIA-COMPLETO.md
+├── 02-BACKEND.md
+├── 03-DOCUMENTACAO-TECNICA.md
+├── 04-DEPLOY.md
 └── README.md
 ```
 
