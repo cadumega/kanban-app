@@ -420,3 +420,10 @@
   height: 6px;
   background: var(--text-muted);
 }
+
+.roadmap-panel__legend-line {
+  width: 3px;
+  height: 16px;
+  background: var(--danger);
+  border-radius: 2px;
+}

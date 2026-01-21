@@ -280,7 +280,7 @@ export function RoadmapPanel({ isOpen, onClose }: RoadmapPanelProps) {
             {todayPosition !== null && (
               <div
                 className="roadmap-panel__today-line"
-                style={{ left: `calc(220px + ${todayPosition}% * (100% - 220px) / 100)` }}
+                style={{ left: `calc(220px + (100% - 220px) * ${todayPosition / 100})` }}
               >
                 <span className="roadmap-panel__today-label">Hoje</span>
               </div>
@@ -404,6 +404,10 @@ export function RoadmapPanel({ isOpen, onClose }: RoadmapPanelProps) {
 
         {/* Legend */}
         <div className="roadmap-panel__legend">
+          <span className="roadmap-panel__legend-item">
+            <span className="roadmap-panel__legend-line" />
+            Hoje
+          </span>
           <span className="roadmap-panel__legend-item">
             <span className="roadmap-panel__legend-bar" style={{ backgroundColor: '#22C55E' }} />
             Concluída

@@ -1,6 +1,6 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Lock, Calendar, User, Users, Clock, CheckSquare, FolderKanban } from 'lucide-react';
+import { Lock, Calendar, User, Users, Clock, CheckSquare, FolderKanban, ArrowUp, ArrowDown } from 'lucide-react';
 import type { Task } from '../../types';
 import './TaskCard.css';
 
@@ -54,10 +54,10 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
     transition,
   };
 
-  const priorityLabels = {
-    alta: 'Alta',
-    media: 'Média',
-    baixa: 'Baixa',
+  const priorityConfig = {
+    alta: { label: 'Alta', icon: ArrowUp, color: '#E53935' },
+    media: { label: 'Média', icon: ArrowUp, color: '#FB8C00' },
+    baixa: { label: 'Baixa', icon: ArrowDown, color: '#1E88E5' },
   };
 
   const formatMonth = (month: string) => {
@@ -124,8 +124,11 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
         )}
 
         <div className="task-card__footer">
-          <span className={`badge badge-priority-${task.priority}`}>
-            {priorityLabels[task.priority]}
+          <span className="task-card__priority" style={{ color: priorityConfig[task.priority].color }} title={priorityConfig[task.priority].label}>
+            {(() => {
+              const PriorityIcon = priorityConfig[task.priority].icon;
+              return <PriorityIcon size={14} strokeWidth={3} />;
+            })()}
           </span>
 
           {task.category_name && (

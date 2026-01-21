@@ -547,3 +547,80 @@ input, textarea, select {
   margin: 4px 0;
   background: var(--border);
 }
+
+/* Collapsed Sidebar */
+.sidebar-collapsed {
+  width: 56px;
+  height: 100vh;
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 8px;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.sidebar-collapsed__btn {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius);
+  color: var(--text-secondary);
+  transition: all var(--transition-fast);
+  cursor: pointer;
+}
+
+.sidebar-collapsed__btn:hover {
+  background: var(--bg-column);
+  color: var(--text-primary);
+}
+
+.sidebar-collapsed__btn--active {
+  background: var(--accent-light);
+  color: var(--accent);
+}
+
+.sidebar-collapsed__divider {
+  width: 24px;
+  height: 1px;
+  background: var(--border);
+  margin: 8px 0;
+}
+
+/* Notification Badge */
+.notification-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  background: var(--danger);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--bg-secondary);
+  animation: pulse-badge 2s infinite;
+}
+
+.notification-badge--small {
+  top: -2px;
+  right: -2px;
+  min-width: 16px;
+  height: 16px;
+  font-size: 9px;
+  padding: 0 4px;
+}
+
+@keyframes pulse-badge {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}

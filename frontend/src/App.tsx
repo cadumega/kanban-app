@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react';
-import { Loader2, RefreshCw, Plus, PanelLeft, Users, FolderKanban, Settings, LogOut, Bell } from 'lucide-react';
+import { Loader2, RefreshCw, Plus, PanelLeft, Users, FolderKanban, Settings, LogOut, Bell, LayoutDashboard, TrendingUp } from 'lucide-react';
 import { Board } from './components/Board/Board';
 import { Sidebar } from './components/Sidebar/Sidebar';
 import { TaskModal } from './components/TaskModal/TaskModal';
 import { ContactsPanel } from './components/Contacts/ContactsPanel';
 import { FollowupsPanel } from './components/Contacts/FollowupsPanel';
+import { FunnelPanel } from './components/Contacts/FunnelPanel';
 import { RoadmapPanel } from './components/Roadmap/RoadmapPanel';
 import { Login } from './components/Login/Login';
 import { AdminPanel } from './components/AdminPanel/AdminPanel';
 import { useBoard } from './hooks/useBoard';
-import { api, setAuthToken, getCurrentUser } from './services/api';
+import { api, setAuthToken, getCurrentUser, getPendingFollowups } from './services/api';
 import type { Task, CreateTaskPayload, User } from './types';
 
 function App() {
@@ -103,15 +104,37 @@ function AuthenticatedApp({ user, onLogout }: { user: User; onLogout: () => void
   const [contactsOpen, setContactsOpen] = useState(false);
   const [followupsOpen, setFollowupsOpen] = useState(false);
   const [roadmapOpen, setRoadmapOpen] = useState(false);
+  const [funnelOpen, setFunnelOpen] = useState(false);
   const [adminPanelOpen, setAdminPanelOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(() => {
     return localStorage.getItem('darkMode') === 'true';
   });
+  const [pendingFollowupsCount, setPendingFollowupsCount] = useState(0);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light');
     localStorage.setItem('darkMode', String(darkMode));
   }, [darkMode]);
+
+  // Fetch pending follow-ups count
+  useEffect(() => {
+    const fetchPendingFollowups = async () => {
+      try {
+        const followups = await getPendingFollowups();
+        // Count follow-ups that are due today or overdue
+        const today = new Date();
+        today.setHours(23, 59, 59, 999);
+        const dueCount = followups.filter(f => new Date(f.date) <= today).length;
+        setPendingFollowupsCount(dueCount);
+      } catch (err) {
+        console.error('Error fetching pending followups:', err);
+      }
+    };
+    fetchPendingFollowups();
+    // Refresh every 5 minutes
+    const interval = setInterval(fetchPendingFollowups, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleExportJSON = async () => {
     const response = await api.get('/tasks/export/json');
@@ -257,7 +280,7 @@ function AuthenticatedApp({ user, onLogout }: { user: User; onLogout: () => void
 
   return (
     <div className="app">
-      {sidebarVisible && (
+      {sidebarVisible ? (
         <Sidebar
           categories={categories}
           columns={columns}
@@ -275,6 +298,31 @@ function AuthenticatedApp({ user, onLogout }: { user: User; onLogout: () => void
           onToggleSidebar={() => setSidebarVisible(false)}
           onFilterByPerson={handleFilterByPerson}
         />
+      ) : (
+        <aside className="sidebar-collapsed">
+          <button onClick={() => setSidebarVisible(true)} className="sidebar-collapsed__btn" title="Expandir sidebar">
+            <PanelLeft size={20} />
+          </button>
+          <div className="sidebar-collapsed__divider" />
+          <button className="sidebar-collapsed__btn sidebar-collapsed__btn--active" title="Board">
+            <LayoutDashboard size={20} />
+          </button>
+          <button onClick={() => setRoadmapOpen(true)} className="sidebar-collapsed__btn" title="Roadmap">
+            <FolderKanban size={20} />
+          </button>
+          <button onClick={() => setContactsOpen(true)} className="sidebar-collapsed__btn" title="CRM">
+            <Users size={20} />
+          </button>
+          <button onClick={() => setFunnelOpen(true)} className="sidebar-collapsed__btn" title="Funil de Vendas">
+            <TrendingUp size={20} />
+          </button>
+          <button onClick={() => setFollowupsOpen(true)} className="sidebar-collapsed__btn" title="Follow-ups" style={{ position: 'relative' }}>
+            <Bell size={20} />
+            {pendingFollowupsCount > 0 && (
+              <span className="notification-badge notification-badge--small">{pendingFollowupsCount}</span>
+            )}
+          </button>
+        </aside>
       )}
 
       <div className="main-content">
@@ -302,8 +350,14 @@ function AuthenticatedApp({ user, onLogout }: { user: User; onLogout: () => void
                 <Users size={16} />
                 CRM
               </button>
-              <button onClick={() => setFollowupsOpen(true)} className="btn" style={{ background: '#0F766E', color: 'white' }} title="Follow-ups pendentes">
+              <button onClick={() => setFunnelOpen(true)} className="btn" style={{ background: '#8B5CF6', color: 'white' }} title="Funil de Vendas">
+                <TrendingUp size={16} />
+              </button>
+              <button onClick={() => setFollowupsOpen(true)} className="btn btn-notification" style={{ background: '#0F766E', color: 'white', position: 'relative' }} title="Follow-ups pendentes">
                 <Bell size={16} />
+                {pendingFollowupsCount > 0 && (
+                  <span className="notification-badge">{pendingFollowupsCount}</span>
+                )}
               </button>
               {user.role === 'master' && (
                 <button onClick={() => setAdminPanelOpen(true)} className="btn btn-ghost" title="Admin">
@@ -376,6 +430,14 @@ function AuthenticatedApp({ user, onLogout }: { user: User; onLogout: () => void
         }}
       />
       <RoadmapPanel isOpen={roadmapOpen} onClose={() => setRoadmapOpen(false)} />
+      <FunnelPanel
+        isOpen={funnelOpen}
+        onClose={() => setFunnelOpen(false)}
+        onOpenContact={() => {
+          setFunnelOpen(false);
+          setContactsOpen(true);
+        }}
+      />
       {user.role === 'master' && (
         <AdminPanel isOpen={adminPanelOpen} onClose={() => setAdminPanelOpen(false)} />
       )}
