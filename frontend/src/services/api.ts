@@ -1,8 +1,11 @@
 import axios from 'axios';
 import type { Column, Task, Category, CreateTaskPayload, UpdateTaskPayload, MoveTaskPayload, Contact, ContactNote, ContactFollowup, ChecklistItem, Project, User, LoginResponse } from '../types';
 
+// Use environment variable for API URL, fallback to relative path for dev proxy
+const API_URL = import.meta.env.VITE_API_URL || '/api';
+
 export const api = axios.create({
-  baseURL: '/api',
+  baseURL: API_URL,
 });
 
 // Auth token management

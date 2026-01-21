@@ -3,7 +3,8 @@ const path = require('path');
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 
-const dataDir = path.join(__dirname, '../../data');
+// Use DATA_DIR env var for Fly.io volume, fallback to local
+const dataDir = process.env.DATA_DIR || path.join(__dirname, '../../data');
 
 // Cache for open database connections
 const dbCache = new Map();
