@@ -131,6 +131,13 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
             })()}
           </span>
 
+          {task.points > 0 && (
+            <span className="task-card__tag task-card__tag--points" title="Pontos (dias)">
+              <Clock size={10} />
+              {task.points}
+            </span>
+          )}
+
           {task.category_name && (
             <span
               className="task-card__category"
@@ -181,13 +188,6 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
             >
               <CheckSquare size={10} />
               {task.checklist_completed}/{task.checklist_total}
-            </span>
-          )}
-
-          {task.points > 0 && (
-            <span className="task-card__tag task-card__tag--points" title="Pontos">
-              <Clock size={10} />
-              {task.points}
             </span>
           )}
         </div>
