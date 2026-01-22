@@ -129,6 +129,11 @@ export const toggleTaskBlock = async (
   return data;
 };
 
+export const toggleTaskFocus = async (id: string, focus: boolean): Promise<Task> => {
+  const { data } = await api.put(`/tasks/${id}/focus`, { focus });
+  return data;
+};
+
 // Categories
 export const getCategories = async (): Promise<Category[]> => {
   const { data } = await api.get('/categories');

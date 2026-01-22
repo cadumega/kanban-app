@@ -1,6 +1,6 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Lock, Calendar, User, Users, Clock, CheckSquare, FolderKanban, ArrowUp, ArrowDown } from 'lucide-react';
+import { Lock, Calendar, User, Users, Clock, CheckSquare, FolderKanban, ArrowUp, ArrowDown, Star } from 'lucide-react';
 import type { Task } from '../../types';
 import './TaskCard.css';
 
@@ -37,9 +37,10 @@ function getDeadlineStatus(startDate: string | null, points: number) {
 interface TaskCardProps {
   task: Task;
   onClick: () => void;
+  onToggleFocus?: (id: string, focus: boolean) => void;
 }
 
-export function TaskCard({ task, onClick }: TaskCardProps) {
+export function TaskCard({ task, onClick, onToggleFocus }: TaskCardProps) {
   const {
     attributes,
     listeners,
@@ -77,21 +78,46 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
 
   const deadlineStatus = getDeadlineStatus(task.start_date, task.points);
 
+  const handleToggleFocus = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onToggleFocus) {
+      onToggleFocus(task.id, !task.focus);
+    }
+  };
+
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={`task-card ${isDragging ? 'task-card--dragging' : ''} ${task.blocked ? 'task-card--blocked' : ''}`}
+      className={`task-card ${isDragging ? 'task-card--dragging' : ''} ${task.blocked ? 'task-card--blocked' : ''} ${task.focus ? 'task-card--focus' : ''}`}
     >
+      {/* Focus ribbon */}
+      {task.focus === 1 && (
+        <div className="task-card__focus-ribbon" title="Foco do dia">
+          <Star size={10} />
+        </div>
+      )}
+
       {/* Drag handle - área maior para arrastar */}
       <div className="task-card__drag-area" {...attributes} {...listeners} />
 
       <div className="task-card__content" onClick={onClick}>
         <div className="task-card__header">
           <h4 className="task-card__title">{task.title}</h4>
-          {task.blocked === 1 && (
-            <Lock size={14} className="task-card__lock" />
-          )}
+          <div className="task-card__header-icons">
+            {onToggleFocus && (
+              <button
+                className={`task-card__focus-btn ${task.focus ? 'task-card__focus-btn--active' : ''}`}
+                onClick={handleToggleFocus}
+                title={task.focus ? 'Remover foco' : 'Marcar como foco do dia'}
+              >
+                <Star size={14} />
+              </button>
+            )}
+            {task.blocked === 1 && (
+              <Lock size={14} className="task-card__lock" />
+            )}
+          </div>
         </div>
 
         {deadlineStatus && (

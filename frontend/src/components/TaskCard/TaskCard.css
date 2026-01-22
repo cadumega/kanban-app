@@ -249,3 +249,68 @@
   justify-content: center;
   flex-shrink: 0;
 }
+
+/* Focus styles */
+.task-card--focus {
+  border-color: #F59E0B;
+  box-shadow: 0 0 0 1px #F59E0B;
+}
+
+.task-card--focus:hover {
+  border-color: #F59E0B;
+  box-shadow: 0 0 0 1px #F59E0B, var(--shadow-md);
+}
+
+/* Focus ribbon - diagonal corner indicator */
+.task-card__focus-ribbon {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 28px;
+  height: 28px;
+  background: linear-gradient(135deg, transparent 50%, #F59E0B 50%);
+  z-index: 2;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 3px;
+}
+
+.task-card__focus-ribbon svg {
+  color: white;
+  transform: translate(-1px, 1px);
+}
+
+/* Focus toggle button */
+.task-card__focus-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: all var(--transition-fast);
+  opacity: 0;
+}
+
+.task-card:hover .task-card__focus-btn {
+  opacity: 1;
+}
+
+.task-card__focus-btn:hover {
+  background: var(--bg-hover);
+  color: #F59E0B;
+}
+
+.task-card__focus-btn--active {
+  opacity: 1;
+  color: #F59E0B;
+}
+
+.task-card__focus-btn--active:hover {
+  color: #D97706;
+}

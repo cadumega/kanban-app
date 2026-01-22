@@ -201,6 +201,23 @@ export function useBoard() {
     }
   };
 
+  const toggleTaskFocus = async (id: string, focus: boolean) => {
+    try {
+      const updatedTask = await api.toggleTaskFocus(id, focus);
+      setColumns(prev =>
+        prev.map(col => ({
+          ...col,
+          tasks: col.tasks.map(task =>
+            task.id === id ? updatedTask : task
+          ),
+        }))
+      );
+    } catch (err) {
+      setError('Erro ao alterar foco da tarefa');
+      console.error(err);
+    }
+  };
+
   // Category operations
   const addCategory = async (name: string, color?: string) => {
     try {
@@ -276,6 +293,7 @@ export function useBoard() {
     moveTask,
     removeTask,
     toggleTaskBlock,
+    toggleTaskFocus,
     addCategory,
     removeCategory,
     getMonths,

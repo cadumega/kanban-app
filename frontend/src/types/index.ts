@@ -26,6 +26,7 @@ export interface Task {
   blocked: number;
   blocked_by: string | null;
   blocked_reason: string | null;
+  focus: number;
   checklist_total?: number;
   checklist_completed?: number;
   created_at: string;

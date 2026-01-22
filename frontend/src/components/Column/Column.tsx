@@ -20,6 +20,7 @@ interface ColumnProps {
   onEditTask: (task: Task) => void;
   onUpdateColumn: (id: string, updates: { title?: string; color?: string }) => void;
   onDeleteColumn: (id: string) => void;
+  onToggleFocus?: (id: string, focus: boolean) => void;
 }
 
 export function Column({
@@ -28,6 +29,7 @@ export function Column({
   onEditTask,
   onUpdateColumn,
   onDeleteColumn,
+  onToggleFocus,
 }: ColumnProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(column.title);
@@ -237,6 +239,7 @@ export function Column({
                     key={task.id}
                     task={task}
                     onClick={() => onEditTask(task)}
+                    onToggleFocus={onToggleFocus}
                   />
                 ))}
               </Fragment>
@@ -251,6 +254,7 @@ export function Column({
                 <TaskCard
                   task={task}
                   onClick={() => onEditTask(task)}
+                  onToggleFocus={onToggleFocus}
                 />
               </Fragment>
             ))
@@ -261,6 +265,7 @@ export function Column({
                 key={task.id}
                 task={task}
                 onClick={() => onEditTask(task)}
+                onToggleFocus={onToggleFocus}
               />
             ))
           )}

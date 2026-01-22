@@ -274,6 +274,39 @@ router.put('/:id/block', (req, res) => {
   }
 });
 
+// Toggle focus on task
+router.put('/:id/focus', (req, res) => {
+  try {
+    const db = req.db;
+    const { id } = req.params;
+    const { focus } = req.body;
+
+    const existing = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id);
+    if (!existing) {
+      return res.status(404).json({ error: 'Tarefa não encontrada' });
+    }
+
+    db.prepare(`
+      UPDATE tasks SET
+        focus = ?,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).run(focus ? 1 : 0, id);
+
+    const task = db.prepare(`
+      SELECT t.*, c.name as category_name, c.color as category_color
+      FROM tasks t
+      LEFT JOIN categories c ON t.category_id = c.id
+      WHERE t.id = ?
+    `).get(id);
+
+    res.json(task);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Erro ao alterar foco da tarefa' });
+  }
+});
+
 // Delete task
 router.delete('/:id', (req, res) => {
   try {

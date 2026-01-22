@@ -74,6 +74,14 @@ function migrateUserDb(db) {
     console.log('Migration: Added tag column to contacts');
   }
 
+  // Check if focus column exists in tasks
+  const tasksInfo = db.prepare("PRAGMA table_info(tasks)").all();
+  const hasFocus = tasksInfo.some(col => col.name === 'focus');
+  if (!hasFocus) {
+    db.exec('ALTER TABLE tasks ADD COLUMN focus INTEGER DEFAULT 0');
+    console.log('Migration: Added focus column to tasks');
+  }
+
   // Check if contact_followups table exists
   const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='contact_followups'").get();
   if (!tables) {
@@ -143,6 +151,7 @@ function initializeUserDb(db) {
       blocked INTEGER DEFAULT 0,
       blocked_by TEXT,
       blocked_reason TEXT,
+      focus INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (column_id) REFERENCES columns(id) ON DELETE CASCADE,

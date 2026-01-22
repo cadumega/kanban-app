@@ -26,6 +26,7 @@ interface BoardProps {
   onUpdateColumn: (id: string, updates: { title?: string; color?: string }) => void;
   onDeleteColumn: (id: string) => void;
   onMoveTask: (taskId: string, targetColumnId: string, position: number) => void;
+  onToggleFocus?: (id: string, focus: boolean) => void;
 }
 
 export function Board({
@@ -36,6 +37,7 @@ export function Board({
   onUpdateColumn,
   onDeleteColumn,
   onMoveTask,
+  onToggleFocus,
 }: BoardProps) {
   const [activeTask, setActiveTask] = useState<Task | null>(null);
 
@@ -142,6 +144,7 @@ export function Board({
               onEditTask={onEditTask}
               onUpdateColumn={onUpdateColumn}
               onDeleteColumn={onDeleteColumn}
+              onToggleFocus={onToggleFocus}
             />
           ))}
 

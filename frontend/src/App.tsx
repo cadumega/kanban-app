@@ -90,6 +90,7 @@ function AuthenticatedApp({ user, onLogout }: { user: User; onLogout: () => void
     moveTask,
     removeTask,
     toggleTaskBlock,
+    toggleTaskFocus,
     addCategory,
     removeCategory,
     getMonths,
@@ -404,6 +405,7 @@ function AuthenticatedApp({ user, onLogout }: { user: User; onLogout: () => void
           onUpdateColumn={updateColumn}
           onDeleteColumn={removeColumn}
           onMoveTask={moveTask}
+          onToggleFocus={toggleTaskFocus}
         />
       </div>
 
