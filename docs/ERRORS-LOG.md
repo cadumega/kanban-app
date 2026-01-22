@@ -79,16 +79,18 @@ Error: The specified token is not valid. Use `vercel login` to generate a new to
 
 **Causa:** Token de autenticação do Vercel expirou ou foi revogado.
 
-**Solução alternativa:** Fazer push para o GitHub para acionar deploy automático:
+**Solução:** Fazer login novamente no Vercel:
 ```bash
-git add -A
-git commit -m "feat: descrição das mudanças"
-git push origin main
+cd frontend && npx vercel login
+```
+Isso abre o navegador para autenticar. Após login, deploy normalmente:
+```bash
+npx vercel --prod --yes
 ```
 
-**Solução definitiva:** Fazer login novamente no Vercel:
+**Solução alternativa:** Fazer push para o GitHub (se conectado ao Vercel):
 ```bash
-npx vercel login
+git push origin main
 ```
 
 ---
@@ -126,6 +128,18 @@ npx vercel --prod --yes
 ```bash
 [Código ou comando que resolveu]
 ```
+
+---
+
+---
+
+## URLs de Produção (Atualizado: 2026-01-21)
+
+| Serviço | URL |
+|---------|-----|
+| **Frontend (Vercel)** | https://frontend-pi-black-47.vercel.app |
+| **Backend (Fly.io)** | https://kanban-api-cadu.fly.dev |
+| **GitHub** | https://github.com/cadumega/kanban-app |
 
 ---
 

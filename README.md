@@ -5,18 +5,22 @@ Sistema de gerenciamento de tarefas estilo Kanban com CRM integrado, follow-ups 
 **Repositório:** https://github.com/cadumega/kanban-app
 
 **Produção:**
-- Frontend: https://kanban-app-five-snowy.vercel.app
+- Frontend: https://frontend-pi-black-47.vercel.app
 - Backend: https://kanban-api-cadu.fly.dev
 
 ---
 
 ## Novidades Recentes
 
-- **Follow-ups no CRM** - Agende lembretes para contatar clientes (7d, 15d, 30d, 3m, 6m ou data personalizada)
-- **Painel de Follow-ups** - Veja todos os follow-ups pendentes organizados por urgência
-- **Busca de Contatos** - Filtre contatos por nome, empresa, email ou cargo
-- **Tags de Funil** - Classifique contatos: Lead, Qualificado, Proposta, Negociação, Cliente, Perdido
-- **Deploy no Fly.io** - Backend com volume persistente (dados não se perdem!)
+- **Funil de Vendas** - Visualização hierárquica dos contatos por etapa do funil
+- **Sidebar Colapsada** - Ícones de acesso rápido quando sidebar oculta
+- **Setas de Prioridade** - Estilo JIRA (alta=vermelho, média=laranja, baixa=azul)
+- **Badge de Notificação** - Contador de follow-ups pendentes no sino
+- **Linha "Hoje" no Roadmap** - Indicador visual da data atual
+- **Modal Melhorado** - Layout com mais espaçamento e organização
+- **Follow-ups no CRM** - Agende lembretes para contatar clientes
+- **Tags de Funil** - Lead, Qualificado, Proposta, Negociação, Cliente, Perdido
+- **Deploy no Fly.io** - Backend com volume persistente
 - **Deploy na Vercel** - Frontend grátis e rápido
 
 ---
@@ -141,7 +145,10 @@ Para detalhes de como fazer o deploy, veja: **[04-DEPLOY.md](./04-DEPLOY.md)**
 cd frontend && npm run build
 
 # Deploy do backend (Fly.io)
-cd backend && fly deploy
+cd backend && ~/.fly/bin/fly deploy
+
+# Deploy do frontend (Vercel)
+cd frontend && npx vercel --prod --yes
 
 # Ver logs do Fly.io
 fly logs
@@ -211,7 +218,7 @@ kanban-app/
 
 ## Links
 
-- **App Produção:** https://kanban-app-five-snowy.vercel.app
+- **App Produção:** https://frontend-pi-black-47.vercel.app
 - **API Produção:** https://kanban-api-cadu.fly.dev
 - **GitHub:** https://github.com/cadumega/kanban-app
 - **App Local:** http://localhost:5173
