@@ -807,11 +807,13 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
                     <Square size={16} />
                   )}
                 </button>
-                <span className="contacts-panel__list-col contacts-panel__list-col--name">Nome</span>
-                <span className="contacts-panel__list-col contacts-panel__list-col--company">Empresa</span>
-                <span className="contacts-panel__list-col contacts-panel__list-col--city">Cidade</span>
-                <span className="contacts-panel__list-col contacts-panel__list-col--tag">Etapa</span>
-                <span className="contacts-panel__list-col contacts-panel__list-col--status">Status</span>
+                <div className="contacts-panel__list-header-cols">
+                  <span>Nome</span>
+                  <span>Empresa</span>
+                  <span>Cidade</span>
+                  <span>Etapa</span>
+                  <span>Status</span>
+                </div>
               </div>
 
               {/* List items */}
@@ -853,19 +855,19 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
                           onClick={() => handleSelectContact(contact)}
                           className="contacts-panel__list-row-content"
                         >
-                          <div className="contacts-panel__list-col contacts-panel__list-col--name">
+                          <div className="contacts-panel__col-name">
                             <div className="contacts-panel__row-avatar">
                               {contact.name.charAt(0).toUpperCase()}
                             </div>
                             <span>{contact.name}</span>
                           </div>
-                          <span className="contacts-panel__list-col contacts-panel__list-col--company">
+                          <span className="contacts-panel__col-company">
                             {contact.company || '—'}
                           </span>
-                          <span className="contacts-panel__list-col contacts-panel__list-col--city">
+                          <span className="contacts-panel__col-city">
                             {contact.city || '—'}
                           </span>
-                          <span className="contacts-panel__list-col contacts-panel__list-col--tag">
+                          <span className="contacts-panel__col-tag">
                             {contact.tag ? (
                               <span
                                 className="contacts-panel__tag-badge"
@@ -874,24 +876,23 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
                                 {getTagInfo(contact.tag).label}
                               </span>
                             ) : (
-                              <span className="contacts-panel__tag-badge contacts-panel__tag-badge--empty">—</span>
+                              <span className="contacts-panel__tag-badge--empty">—</span>
                             )}
                           </span>
-                          <span className="contacts-panel__list-col contacts-panel__list-col--status">
+                          <span className="contacts-panel__col-status">
                             {hasOverdue && (
-                              <span className="contacts-panel__status-badge contacts-panel__status-badge--overdue" title="Follow-up atrasado">
+                              <span className="contacts-panel__status-icon contacts-panel__status-icon--overdue" title="Follow-up atrasado">
                                 <AlertCircle size={14} />
                               </span>
                             )}
                             {hasPending && !hasOverdue && (
-                              <span className="contacts-panel__status-badge contacts-panel__status-badge--pending" title="Follow-up pendente">
+                              <span className="contacts-panel__status-icon contacts-panel__status-icon--pending" title="Follow-up pendente">
                                 <Bell size={14} />
                               </span>
                             )}
                             {(contact.notes_count ?? 0) > 0 && (
-                              <span className="contacts-panel__status-badge" title={`${contact.notes_count} nota(s)`}>
+                              <span className="contacts-panel__status-icon" title={`${contact.notes_count} nota(s)`}>
                                 <MessageSquare size={14} />
-                                <span>{contact.notes_count}</span>
                               </span>
                             )}
                           </span>
