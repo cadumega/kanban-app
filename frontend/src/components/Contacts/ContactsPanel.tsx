@@ -10,8 +10,6 @@ import {
   Trash2,
   MessageSquare,
   Send,
-  ChevronLeft,
-  ChevronDown,
   Image,
   Loader2,
   Calendar,
@@ -26,7 +24,6 @@ import {
   Filter,
   CheckSquare,
   Square,
-  MoreHorizontal,
   AlertCircle,
   ArrowUpDown,
 } from 'lucide-react';
@@ -85,7 +82,7 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
 
   // Selection for bulk actions
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [showBulkActions, setShowBulkActions] = useState(false);
+  const [, setShowBulkActions] = useState(false);
   const [bulkTag, setBulkTag] = useState<ContactTag>(null);
   const [bulkFollowupDays, setBulkFollowupDays] = useState<number | null>(null);
 

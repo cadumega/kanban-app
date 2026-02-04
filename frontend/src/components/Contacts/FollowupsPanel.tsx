@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
-import { X, Bell, Clock, Check, User, Building, ChevronRight, ChevronLeft, MapPin, Tag, List, CalendarDays } from 'lucide-react';
-import type { ContactFollowup, ContactTag } from '../../types';
+import { X, Bell, Clock, Check, User, Building, ChevronRight, ChevronLeft, MapPin, List, CalendarDays } from 'lucide-react';
+import type { ContactFollowup } from '../../types';
 import * as api from '../../services/api';
 import './FollowupsPanel.css';
 
