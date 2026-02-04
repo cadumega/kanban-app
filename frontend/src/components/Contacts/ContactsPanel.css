@@ -131,12 +131,18 @@
 .contacts-panel__header-search {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
+  gap: 10px;
+  padding: 10px 16px;
   background: var(--bg-column);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  min-width: 240px;
+  min-width: 280px;
+}
+
+/* Dark mode search */
+[data-theme="dark"] .contacts-panel__header-search {
+  background: var(--bg-primary);
+  border-color: var(--border);
 }
 
 .contacts-panel__header-search svg {
@@ -148,13 +154,19 @@
   flex: 1;
   border: none;
   background: none;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-primary);
   outline: none;
+  padding: 2px 0;
 }
 
 .contacts-panel__header-search input::placeholder {
   color: var(--text-muted);
+}
+
+/* Dark mode input */
+[data-theme="dark"] .contacts-panel__header-search input {
+  color: var(--text-primary);
 }
 
 /* Filter Button */
@@ -425,17 +437,27 @@
 /* List Header */
 .contacts-panel__list-header {
   display: grid;
-  grid-template-columns: 40px 2fr 1.5fr 1fr 120px 140px 50px;
-  gap: 12px;
-  padding: 10px 20px;
+  grid-template-columns: 40px 1.8fr 1.8fr 1fr 120px 140px 50px;
+  gap: 16px;
+  padding: 12px 24px;
   background: var(--bg-column);
   border-bottom: 1px solid var(--border);
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   align-items: center;
+}
+
+/* Dark mode: make header text more visible */
+[data-theme="dark"] .contacts-panel__list-header {
+  color: var(--text-muted);
+  background: var(--bg-primary);
+}
+
+.contacts-panel__list-header span {
+  color: inherit;
 }
 
 .contacts-panel__list-header-check {
@@ -489,9 +511,9 @@
 
 .contacts-panel__list-row {
   display: grid;
-  grid-template-columns: 40px 2fr 1.5fr 1fr 120px 140px 50px;
-  gap: 12px;
-  padding: 12px 20px;
+  grid-template-columns: 40px 1.8fr 1.8fr 1fr 120px 140px 50px;
+  gap: 16px;
+  padding: 14px 24px;
   align-items: center;
   border-bottom: 1px solid var(--border);
   transition: background var(--transition-fast);
@@ -548,11 +570,17 @@
 }
 
 .contacts-panel__list-col--company {
-  font-size: 13px;
-  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Dark mode: ensure company name is visible */
+[data-theme="dark"] .contacts-panel__list-col--company {
+  color: var(--text-primary);
 }
 
 .contacts-panel__list-col--city {
@@ -1567,12 +1595,77 @@
 @media (max-width: 1200px) {
   .contacts-panel__list-header,
   .contacts-panel__list-row {
-    grid-template-columns: 40px 2fr 1.5fr 100px 120px 50px;
+    grid-template-columns: 40px 1.8fr 1.5fr 100px 120px 50px;
   }
 
   .contacts-panel__list-col--city {
     display: none;
   }
+}
+
+/* ============================================ */
+/* Dark Mode Improvements                       */
+/* ============================================ */
+[data-theme="dark"] .contacts-panel {
+  background: var(--bg-secondary);
+}
+
+[data-theme="dark"] .contacts-panel__header {
+  background: var(--bg-secondary);
+}
+
+[data-theme="dark"] .contacts-panel__filters {
+  background: var(--bg-primary);
+}
+
+[data-theme="dark"] .contacts-panel__filter-select {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .contacts-panel__filter-select option {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .contacts-panel__list-name {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .contacts-panel__list-col--city {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .contacts-panel__kanban {
+  background: var(--bg-primary);
+}
+
+[data-theme="dark"] .contacts-panel__kanban-column {
+  background: var(--bg-secondary);
+}
+
+[data-theme="dark"] .contacts-panel__kanban-card {
+  background: var(--bg-column);
+}
+
+[data-theme="dark"] .contacts-panel__kanban-card-name {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .contacts-panel__kanban-card-company {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .contacts-panel__detail {
+  background: var(--bg-secondary);
+}
+
+[data-theme="dark"] .contacts-panel__contact-info h3 {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .contacts-panel__note-content {
+  color: var(--text-primary);
 }
 
 @media (max-width: 900px) {

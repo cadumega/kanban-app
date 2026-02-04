@@ -77,7 +77,7 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
   const [cityFilter, setCityFilter] = useState<string>('all');
   const [tagFilter, setTagFilter] = useState<string>('all');
   const [followupFilter, setFollowupFilter] = useState<string>('all'); // all, has, none, overdue
-  const [sortField, setSortField] = useState<SortField>('name');
+  const [sortField, setSortField] = useState<SortField>('company');
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
 
   // Selection for bulk actions
