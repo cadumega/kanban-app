@@ -625,6 +625,13 @@ function migrateUserDb(db) {
   if (!hasImagePath) {
     db.exec('ALTER TABLE contact_notes ADD COLUMN image_path TEXT');
   }
+
+  // Verifica se a coluna city existe em contacts
+  const contactsInfo = db.prepare("PRAGMA table_info(contacts)").all();
+  const hasCity = contactsInfo.some(col => col.name === 'city');
+  if (!hasCity) {
+    db.exec('ALTER TABLE contacts ADD COLUMN city TEXT DEFAULT NULL');
+  }
 }
 ```
 
@@ -675,15 +682,97 @@ router.post('/notes', upload.single('image'), (req, res) => {
 
 ---
 
+## API de Contatos e Follow-ups (CRM)
+
+O CRM tem endpoints para gerenciar contatos, notas e follow-ups.
+
+### Rotas de Contatos
+
+```javascript
+// Listar todos os contatos (com contagem de notas)
+GET /api/contacts
+
+// Detalhes de um contato (com notas)
+GET /api/contacts/:id
+
+// Criar contato
+POST /api/contacts
+Body: { name, email, phone, company, role, tag, city }
+
+// Atualizar contato
+PUT /api/contacts/:id
+
+// Excluir contato (também exclui notas e imagens)
+DELETE /api/contacts/:id
+```
+
+### Rotas de Notas (com upload de imagem)
+
+```javascript
+// Adicionar nota (com imagem opcional)
+POST /api/contacts/:id/notes
+Body: FormData { content, image }
+
+// Excluir nota
+DELETE /api/contacts/:contactId/notes/:noteId
+
+// Servir imagem
+GET /api/contacts/images/:filename
+```
+
+### Rotas de Follow-ups
+
+```javascript
+// Listar todos os follow-ups pendentes (para o painel)
+GET /api/contacts/followups/pending
+// Retorna: { ...followup, contact_name, contact_company, contact_city, contact_tag }
+
+// Follow-ups de um contato
+GET /api/contacts/:id/followups
+
+// Criar follow-up
+POST /api/contacts/:id/followups
+Body: { date, description }
+
+// Atualizar follow-up (marcar completo ou editar)
+PUT /api/contacts/:contactId/followups/:followupId
+Body: { date, description, completed }
+
+// Excluir follow-up
+DELETE /api/contacts/:contactId/followups/:followupId
+```
+
+### Exemplo: Buscar Follow-ups Pendentes
+
+O endpoint `/api/contacts/followups/pending` usa JOIN para trazer dados do contato:
+
+```javascript
+const followups = db.prepare(`
+  SELECT f.*,
+    c.name as contact_name,
+    c.company as contact_company,
+    c.city as contact_city,
+    c.tag as contact_tag
+  FROM contact_followups f
+  JOIN contacts c ON f.contact_id = c.id
+  WHERE f.completed = 0
+  ORDER BY f.date ASC
+`).all();
+```
+
+Isso permite exibir badges de cidade e tag do funil no painel de follow-ups.
+
+---
+
 ## Próximos Passos de Aprendizado
 
 1. **Validação** - Verificar se os dados estão corretos antes de salvar
 2. **Tratamento de Erros** - O que fazer quando algo dá errado
 3. ~~**Autenticação**~~ ✅ Já implementado!
-4. **Relacionamentos** - Como conectar tabelas (JOIN)
+4. **Relacionamentos** - Como conectar tabelas (JOIN) ✅ Usado nos follow-ups!
 5. ~~**Migrations**~~ ✅ Já implementado!
 6. **Escalabilidade** - Migrar para PostgreSQL quando necessário
 
 ---
 
-*Dica: Leia o arquivo `GUIA-COMPLETO.md` para uma visão geral de todo o projeto!*
+*Documentação atualizada em Fevereiro de 2026*

@@ -82,6 +82,14 @@ function migrateUserDb(db) {
     console.log('Migration: Added focus column to tasks');
   }
 
+  // Check if city column exists in contacts
+  const contactsInfoCity = db.prepare("PRAGMA table_info(contacts)").all();
+  const hasCity = contactsInfoCity.some(col => col.name === 'city');
+  if (!hasCity) {
+    db.exec('ALTER TABLE contacts ADD COLUMN city TEXT DEFAULT NULL');
+    console.log('Migration: Added city column to contacts');
+  }
+
   // Check if contact_followups table exists
   const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='contact_followups'").get();
   if (!tables) {
@@ -171,6 +179,7 @@ function initializeUserDb(db) {
       company TEXT,
       role TEXT,
       tag TEXT DEFAULT NULL,
+      city TEXT DEFAULT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );

@@ -137,6 +137,8 @@ kanban-app/
 | phone | TEXT | Telefone |
 | company | TEXT | Empresa |
 | role | TEXT | Cargo/Função |
+| tag | TEXT | Etapa do funil (lead, qualificado, proposta, negociacao, cliente, perdido) |
+| city | TEXT | Cidade do contato |
 | created_at | DATETIME | Data de criação |
 | updated_at | DATETIME | Última atualização |
 
@@ -146,6 +148,18 @@ kanban-app/
 | id | TEXT (UUID) | Identificador único |
 | contact_id | TEXT | FK para contato |
 | content | TEXT | Conteúdo da nota |
+| image_path | TEXT | Nome do arquivo de imagem (opcional) |
+| created_at | DATETIME | Data de criação |
+
+### Tabela: contact_followups (Lembretes CRM)
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| id | TEXT (UUID) | Identificador único |
+| contact_id | TEXT | FK para contato |
+| date | TEXT | Data do follow-up (YYYY-MM-DD) |
+| description | TEXT | Descrição/motivo do follow-up |
+| completed | INTEGER | Se foi concluído (0/1) |
+| completed_at | DATETIME | Data de conclusão |
 | created_at | DATETIME | Data de criação |
 
 ### Tabela: projects (Roadmap)
@@ -203,13 +217,27 @@ DELETE /api/categories/:id   # Excluir categoria
 
 ### Contatos (CRM)
 ```
-GET    /api/contacts         # Listar todos
-GET    /api/contacts/:id     # Detalhes + notas
-POST   /api/contacts         # Criar contato
-PUT    /api/contacts/:id     # Editar contato
-DELETE /api/contacts/:id     # Excluir contato
-POST   /api/contacts/:id/notes     # Adicionar nota
-DELETE /api/contacts/:id/notes/:noteId  # Excluir nota
+GET    /api/contacts                           # Listar todos (com notes_count)
+GET    /api/contacts/:id                       # Detalhes + notas
+POST   /api/contacts                           # Criar contato
+PUT    /api/contacts/:id                       # Editar contato
+DELETE /api/contacts/:id                       # Excluir contato + notas + imagens
+```
+
+### Notas de Contatos
+```
+POST   /api/contacts/:id/notes                 # Adicionar nota (FormData: content + image)
+DELETE /api/contacts/:contactId/notes/:noteId  # Excluir nota
+GET    /api/contacts/images/:filename          # Servir imagem
+```
+
+### Follow-ups (Lembretes)
+```
+GET    /api/contacts/followups/pending          # Todos pendentes (com dados do contato via JOIN)
+GET    /api/contacts/:id/followups              # Follow-ups de um contato
+POST   /api/contacts/:id/followups              # Criar follow-up (date, description)
+PUT    /api/contacts/:contactId/followups/:id   # Atualizar/marcar completo
+DELETE /api/contacts/:contactId/followups/:id   # Excluir follow-up
 ```
 
 ### Projetos (Roadmap)
@@ -272,10 +300,25 @@ DELETE /api/projects/:id          # Excluir projeto
 - CSV para Excel/Sheets
 
 ### Mini CRM
-- Cadastro de contatos (nome, email, telefone, empresa, cargo)
+- Cadastro de contatos (nome, email, telefone, empresa, cargo, **cidade**)
 - Telefone formatado automaticamente (XX) XXXXX-XXXX
+- **Tags de funil** - Lead, Qualificado, Proposta, Negociação, Cliente, Perdido
+- **Modos de visualização**: Lista ou Kanban (drag & drop entre etapas)
+- **Filtros avançados**:
+  - Busca por texto (nome, empresa, email, cidade)
+  - Filtro por cidade (dropdown dinâmico)
+  - Filtro por tag (etapa do funil)
+  - Filtro por follow-up (todos, com pendente, sem pendente, atrasados)
+  - Ordenação por nome, empresa, cidade, data
+- **Seleção em lote** (bulk actions):
+  - Alterar tag de múltiplos contatos
+  - Criar follow-up para múltiplos contatos
 - Histórico de notas por contato (timeline)
+- **Upload de imagens** nas notas (até 5MB)
 - Contador de notas na lista
+- **Follow-ups** - Agende lembretes (7d, 15d, 30d, 3m, 6m ou personalizado)
+- **Painel de Follow-ups** com filtro por cidade, badges de cidade/funil e contadores
+- **Funil de Vendas** - Visualização hierárquica com taxas de conversão
 
 ### Business Roadmap
 - **Timeline visual** de projetos com navegação por período
@@ -401,7 +444,28 @@ Modal para criar/editar tarefas com todos os campos, incluindo seletor de pontos
 Barra lateral com filtros, estatísticas, dark mode toggle e botões de exportação.
 
 ### ContactsPanel.tsx
-Painel de CRM com lista de contatos, formulário de edição e histórico de notas.
+Painel principal do CRM com:
+- Alternância entre visualização Lista e Kanban
+- Filtros avançados (busca, cidade, tag, follow-up, ordenação)
+- Seleção múltipla com checkbox para ações em lote
+- Formulário de edição com campo cidade (sugestões automáticas)
+- Histórico de notas com upload de imagens
+- Gerenciamento de follow-ups por contato
+
+### FollowupsPanel.tsx
+Painel de follow-ups pendentes com:
+- Agrupamento por urgência (atrasados, hoje, esta semana, próximos)
+- Filtro por cidade com contador
+- Badges de cidade e etapa do funil em cada item
+- Ações rápidas: marcar completo, reagendar, abrir contato
+
+### FunnelPanel.tsx
+Visualização do funil de vendas com:
+- Gráfico hierárquico das etapas (Lead → Cliente)
+- Contagem de contatos por etapa
+- Taxas de conversão entre etapas
+- Clique para ver contatos de uma etapa
+- Indicador de contatos "Perdidos" e "Sem classificação"
 
 ### RoadmapPanel.tsx
 Painel de Business Roadmap com:
@@ -458,4 +522,4 @@ const {
 
 ---
 
-*Documentação atualizada em Janeiro/2026*
+*Documentação atualizada em Fevereiro/2026*

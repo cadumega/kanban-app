@@ -14,7 +14,7 @@
 6. [Sistema de Autenticação](#6-sistema-de-autenticação)
 7. [Sistema Multi-Usuário](#7-sistema-multi-usuário)
 8. [O CRM de Contatos](#8-o-crm-de-contatos)
-9. [Deploy no Render](#9-deploy-no-render)
+9. [Deploy (Fly.io + Vercel)](#9-deploy-flyio--vercel)
 10. [Escalabilidade Futura](#10-escalabilidade-futura)
 11. [Comandos Úteis](#11-comandos-úteis)
 
@@ -318,6 +318,8 @@ CREATE TABLE contacts (
     phone TEXT,
     company TEXT,
     role TEXT,
+    tag TEXT DEFAULT NULL,          -- Etapa do funil
+    city TEXT DEFAULT NULL,         -- Cidade do contato
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -541,10 +543,54 @@ O usuário master padrão é:
 
 ### Funcionalidades
 
-- Lista de contatos com nome, email, telefone, empresa, cargo
-- Histórico de notas por contato
-- **Upload de imagens** nas notas
-- Integração com WhatsApp (link direto)
+O Mini CRM é um sistema completo para gerenciar contatos e relacionamentos com clientes.
+
+#### Cadastro de Contatos
+- Nome, email, telefone, empresa, cargo, **cidade**
+- Telefone formatado automaticamente: (XX) XXXXX-XXXX
+- Campo cidade com **sugestões automáticas** baseadas em contatos existentes
+
+#### Funil de Vendas (Pipeline)
+- **Tags de funil**: Lead → Qualificado → Proposta → Negociação → Cliente (ou Perdido)
+- **Visualização hierárquica** do funil com contagem por etapa
+- **Taxas de conversão** calculadas automaticamente entre etapas
+- Clique em uma etapa para ver os contatos daquela fase
+
+#### Modos de Visualização
+- **Lista**: Visualização tradicional em tabela
+- **Kanban**: Arraste contatos entre colunas do funil (drag & drop)
+
+#### Filtros Avançados
+- **Busca por texto** - Filtra por nome, empresa, email, cidade
+- **Filtro por cidade** - Dropdown dinâmico com cidades cadastradas
+- **Filtro por tag** - Filtre por etapa do funil
+- **Filtro por follow-up** - Todos, com pendente, sem pendente, atrasados
+- **Ordenação** - Por nome, empresa, cidade, data de atualização
+
+#### Seleção em Lote (Bulk Actions)
+- Selecione múltiplos contatos com checkboxes
+- **Alterar tag em lote** - Mude a etapa do funil de vários contatos
+- **Criar follow-up em lote** - Agende lembretes para múltiplos contatos
+
+#### Histórico e Notas
+- Timeline de notas por contato
+- **Upload de imagens** nas notas (até 5MB)
+- Contador de notas na lista de contatos
+
+#### Follow-ups (Lembretes)
+- Agende lembretes: 7d, 15d, 30d, 3m, 6m ou data personalizada
+- **Painel de Follow-ups** com agrupamento por urgência:
+  - Atrasados (vermelho)
+  - Hoje (amarelo)
+  - Esta semana
+  - Próximos
+- **Filtro por cidade** no painel com contadores
+- **Badges** de cidade e etapa do funil em cada follow-up
+- Marcar como concluído ou reagendar
+
+#### Integrações
+- **WhatsApp**: Link direto para iniciar conversa
+- **Email**: Clique para abrir cliente de email
 
 ### Upload de Imagens - Como Funciona
 
@@ -590,77 +636,85 @@ await api.post(`/contacts/${contactId}/notes`, formData, {
 
 ---
 
-## 9. Deploy no Render
+## 9. Deploy (Fly.io + Vercel)
 
-### O que é o Render?
+O projeto está configurado para rodar gratuitamente com:
 
-Render é uma plataforma de **hospedagem em nuvem**. Similar ao Heroku, mas com plano gratuito melhor. Você faz push do código e ele roda automaticamente.
+| Serviço | O que hospeda | Custo |
+|---------|---------------|-------|
+| **Vercel** | Frontend (React) | Grátis |
+| **Fly.io** | Backend (Node.js + SQLite) | Grátis |
 
-### Por que Render?
+### Por que essa combinação?
 
-- **Plano gratuito** com features suficientes
-- **Disco persistente** (importante para SQLite!)
-- **Deploy automático** via GitHub
-- **SSL grátis** (https)
+- **Vercel**: Deploy automático do React, CDN global, SSL grátis
+- **Fly.io**: Volume persistente para SQLite (1GB grátis), máquinas leves
 
-### Configuração (`render.yaml`)
+### Deploy do Backend (Fly.io)
 
-```yaml
-services:
-  - type: web
-    name: kanban-app
-    env: node
-    plan: free
+O Fly.io usa um `Dockerfile` e um `fly.toml` para configurar o deploy.
 
-    # Comandos de build
-    buildCommand: |
-      cd frontend && npm install && npm run build
-      cd ../backend && npm install
-
-    # Comando para iniciar
-    startCommand: cd backend && npm start
-
-    # Variáveis de ambiente
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: JWT_SECRET
-        generateValue: true  # Render gera automaticamente
-
-    # IMPORTANTE: Disco para persistir dados
-    disk:
-      name: data
-      mountPath: /opt/render/project/src/backend/data
-      sizeGB: 1
-```
-
-### Por que o Disco é Importante?
-
-Sem disco persistente, **os dados seriam perdidos** a cada deploy ou reinício. O Render (e outras plataformas) rodam em containers que são "efêmeros" - tudo que não está no disco persistente some.
-
-O disco de 1GB fica montado em `/opt/render/project/src/backend/data`, que é onde salvamos os bancos SQLite e imagens.
-
-### Passo a Passo para Deploy
-
-1. **Suba o código para GitHub**
 ```bash
-git init
-git add .
-git commit -m "Primeiro commit"
-git remote add origin https://github.com/seu-usuario/kanban-app.git
-git push -u origin main
+# Instalar CLI do Fly.io
+curl -L https://fly.io/install.sh | sh
+
+# Login
+fly auth login
+
+# Primeiro deploy (cria o app)
+cd backend
+fly launch
+
+# Deploys seguintes
+fly deploy
 ```
 
-2. **Crie conta no Render** (render.com)
+**Configuração importante** (`fly.toml`):
 
-3. **Novo Web Service**
-   - Conecte com GitHub
-   - Selecione o repositório
-   - Render detecta o `render.yaml` automaticamente
+```toml
+[mounts]
+  source = "kanban_data"
+  destination = "/data"
+```
 
-4. **Aguarde o deploy** (5-10 minutos)
+O volume `/data` persiste os bancos SQLite e imagens entre deploys.
 
-5. **Acesse a URL** gerada (tipo `kanban-app.onrender.com`)
+### Deploy do Frontend (Vercel)
+
+```bash
+# Instalar Vercel CLI (opcional)
+npm i -g vercel
+
+# Deploy
+cd frontend
+vercel --prod
+```
+
+Ou conecte o repositório GitHub diretamente no painel da Vercel.
+
+**Variável de ambiente importante**:
+- `VITE_API_URL`: URL do backend no Fly.io
+
+### URLs de Produção
+
+- **Frontend**: https://frontend-pi-black-47.vercel.app
+- **Backend**: https://kanban-api-cadu.fly.dev
+
+### Comandos Úteis
+
+```bash
+# Deploy do backend
+cd backend && fly deploy
+
+# Deploy do frontend
+cd frontend && vercel --prod
+
+# Ver logs do backend
+fly logs
+
+# Acessar máquina do Fly.io
+fly ssh console
+```
 
 ### Primeiro Acesso em Produção
 
@@ -848,4 +902,4 @@ Qualquer dúvida, este documento serve como referência. Boa sorte com o projeto
 
 ---
 
-*Documentação gerada em Janeiro de 2026*
+*Documentação atualizada em Fevereiro de 2026*

@@ -90,6 +90,7 @@ export interface Contact {
   company: string | null;
   role: string | null;
   tag: ContactTag;
+  city: string | null;
   notes_count?: number;
   notes?: ContactNote[];
   followups?: ContactFollowup[];
@@ -116,6 +117,8 @@ export interface ContactFollowup {
   // Populated from join
   contact_name?: string;
   contact_company?: string;
+  contact_city?: string;
+  contact_tag?: string;
 }
 
 export interface ChecklistItem {

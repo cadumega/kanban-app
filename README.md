@@ -12,6 +12,10 @@ Sistema de gerenciamento de tarefas estilo Kanban com CRM integrado, follow-ups 
 
 ## Novidades Recentes
 
+- **Campo Cidade nos Contatos** - Registre a cidade de cada contato (com sugestões automáticas)
+- **Filtro por Cidade** - Filtre contatos e follow-ups por cidade
+- **Badges no Follow-up** - Cidade e etapa do funil visíveis em cada follow-up
+- **Contador por Cidade** - Veja quantos follow-ups pendentes por cidade
 - **Funil de Vendas** - Visualização hierárquica dos contatos por etapa do funil
 - **Sidebar Colapsada** - Ícones de acesso rápido quando sidebar oculta
 - **Setas de Prioridade** - Estilo JIRA (alta=vermelho, média=laranja, baixa=azul)
@@ -76,13 +80,16 @@ Este é o usuário master que pode criar outros usuários.
 - Exportação CSV/JSON
 
 ### Mini CRM
-- Cadastro de contatos (nome, email, telefone, empresa, cargo)
-- **Busca de contatos** - Filtre por palavra-chave
+- Cadastro de contatos (nome, email, telefone, empresa, cargo, **cidade**)
+- **Busca de contatos** - Filtre por palavra-chave (inclui cidade)
+- **Filtro por cidade** - Dropdown dinâmico na lista de contatos
 - **Tags de funil** - Lead, Qualificado, Proposta, Negociação, Cliente, Perdido
 - Histórico de notas por contato
 - **Upload de imagens** nas notas (até 5MB)
 - **Follow-ups** - Agende lembretes (7d, 15d, 30d, 3m, 6m ou personalizado)
 - **Painel de Follow-ups** - Veja todos pendentes por urgência
+  - Filtro por cidade com contador
+  - Badges de cidade e etapa do funil em cada item
 - Integração com WhatsApp (link direto)
 - Timeline de interações
 

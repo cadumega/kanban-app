@@ -71,7 +71,7 @@ router.get('/:id', (req, res) => {
 // Create contact
 router.post('/', (req, res) => {
   const db = req.db;
-  const { name, email, phone, company, role, tag } = req.body;
+  const { name, email, phone, company, role, tag, city } = req.body;
 
   if (!name?.trim()) {
     return res.status(400).json({ error: 'Nome é obrigatório' });
@@ -80,9 +80,9 @@ router.post('/', (req, res) => {
   const id = uuidv4();
 
   db.prepare(`
-    INSERT INTO contacts (id, name, email, phone, company, role, tag)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `).run(id, name.trim(), email || null, phone || null, company || null, role || null, tag || null);
+    INSERT INTO contacts (id, name, email, phone, company, role, tag, city)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(id, name.trim(), email || null, phone || null, company || null, role || null, tag || null, city || null);
 
   const contact = db.prepare('SELECT * FROM contacts WHERE id = ?').get(id);
   res.status(201).json(contact);
@@ -92,7 +92,7 @@ router.post('/', (req, res) => {
 router.put('/:id', (req, res) => {
   const db = req.db;
   const { id } = req.params;
-  const { name, email, phone, company, role, tag } = req.body;
+  const { name, email, phone, company, role, tag, city } = req.body;
 
   const existing = db.prepare('SELECT * FROM contacts WHERE id = ?').get(id);
   if (!existing) {
@@ -101,7 +101,7 @@ router.put('/:id', (req, res) => {
 
   db.prepare(`
     UPDATE contacts
-    SET name = ?, email = ?, phone = ?, company = ?, role = ?, tag = ?, updated_at = CURRENT_TIMESTAMP
+    SET name = ?, email = ?, phone = ?, company = ?, role = ?, tag = ?, city = ?, updated_at = CURRENT_TIMESTAMP
     WHERE id = ?
   `).run(
     name?.trim() || existing.name,
@@ -110,6 +110,7 @@ router.put('/:id', (req, res) => {
     company !== undefined ? company : existing.company,
     role !== undefined ? role : existing.role,
     tag !== undefined ? tag : existing.tag,
+    city !== undefined ? city : existing.city,
     id
   );
 
@@ -211,7 +212,7 @@ router.get('/followups/pending', (req, res) => {
   const db = req.db;
 
   const followups = db.prepare(`
-    SELECT f.*, c.name as contact_name, c.company as contact_company
+    SELECT f.*, c.name as contact_name, c.company as contact_company, c.city as contact_city, c.tag as contact_tag
     FROM contact_followups f
     JOIN contacts c ON f.contact_id = c.id
     WHERE f.completed = 0

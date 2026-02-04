@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   X,
   Plus,
@@ -11,6 +11,7 @@ import {
   MessageSquare,
   Send,
   ChevronLeft,
+  ChevronDown,
   Image,
   Loader2,
   Calendar,
@@ -19,6 +20,15 @@ import {
   Bell,
   Search,
   Tag,
+  MapPin,
+  List,
+  LayoutGrid,
+  Filter,
+  CheckSquare,
+  Square,
+  MoreHorizontal,
+  AlertCircle,
+  ArrowUpDown,
 } from 'lucide-react';
 import type { Contact, ContactFollowup, ContactTag } from '../../types';
 import * as api from '../../services/api';
@@ -28,6 +38,10 @@ interface ContactsPanelProps {
   isOpen: boolean;
   onClose: () => void;
 }
+
+type ViewMode = 'list' | 'kanban';
+type SortField = 'name' | 'company' | 'city' | 'updated_at' | 'created_at';
+type SortOrder = 'asc' | 'desc';
 
 // Tag options for funnel stages
 const TAG_OPTIONS: { value: ContactTag; label: string; color: string }[] = [
@@ -39,6 +53,9 @@ const TAG_OPTIONS: { value: ContactTag; label: string; color: string }[] = [
   { value: 'cliente', label: 'Cliente', color: '#22C55E' },
   { value: 'perdido', label: 'Perdido', color: '#EF4444' },
 ];
+
+// Funnel stages for Kanban (excluding null)
+const FUNNEL_STAGES = TAG_OPTIONS.filter(t => t.value !== null);
 
 const getTagInfo = (tag: ContactTag) => {
   return TAG_OPTIONS.find(t => t.value === tag) || TAG_OPTIONS[0];
@@ -54,14 +71,32 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [sendingNote, setSendingNote] = useState(false);
 
-  // Search state
+  // View mode
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
+
+  // Search and filters
   const [searchQuery, setSearchQuery] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  const [cityFilter, setCityFilter] = useState<string>('all');
+  const [tagFilter, setTagFilter] = useState<string>('all');
+  const [followupFilter, setFollowupFilter] = useState<string>('all'); // all, has, none, overdue
+  const [sortField, setSortField] = useState<SortField>('name');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+
+  // Selection for bulk actions
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showBulkActions, setShowBulkActions] = useState(false);
+  const [bulkTag, setBulkTag] = useState<ContactTag>(null);
+  const [bulkFollowupDays, setBulkFollowupDays] = useState<number | null>(null);
 
   // Follow-up state
   const [followups, setFollowups] = useState<ContactFollowup[]>([]);
   const [showFollowupForm, setShowFollowupForm] = useState(false);
   const [followupDate, setFollowupDate] = useState('');
   const [followupDescription, setFollowupDescription] = useState('');
+
+  // All pending followups for filtering
+  const [allPendingFollowups, setAllPendingFollowups] = useState<ContactFollowup[]>([]);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -71,11 +106,21 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
     company: '',
     role: '',
     tag: null as ContactTag,
+    city: '',
   });
+
+  // Drag state for Kanban
+  const [draggedContact, setDraggedContact] = useState<Contact | null>(null);
 
   useEffect(() => {
     if (isOpen) {
       loadContacts();
+      loadPendingFollowups();
+    } else {
+      // Reset state when closing
+      setSelectedContact(null);
+      setSelectedIds(new Set());
+      setIsEditing(false);
     }
   }, [isOpen]);
 
@@ -88,6 +133,15 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
       console.error('Erro ao carregar contatos:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadPendingFollowups = async () => {
+    try {
+      const data = await api.getPendingFollowups();
+      setAllPendingFollowups(data);
+    } catch (err) {
+      console.error('Erro ao carregar follow-ups:', err);
     }
   };
 
@@ -108,21 +162,233 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
     loadContactDetails(contact.id);
   };
 
-  // Filter contacts based on search query
-  const filteredContacts = contacts.filter(contact => {
-    if (!searchQuery.trim()) return true;
-    const query = searchQuery.toLowerCase();
-    return (
-      contact.name.toLowerCase().includes(query) ||
-      contact.company?.toLowerCase().includes(query) ||
-      contact.email?.toLowerCase().includes(query) ||
-      contact.role?.toLowerCase().includes(query) ||
-      getTagInfo(contact.tag).label.toLowerCase().includes(query)
-    );
-  });
+  // Get unique cities for the filter
+  const availableCities = useMemo(() =>
+    Array.from(new Set(contacts.map(c => c.city).filter(Boolean))).sort() as string[],
+    [contacts]
+  );
+
+  // Check if contact has pending followup
+  const contactHasPendingFollowup = (contactId: string) => {
+    return allPendingFollowups.some(f => f.contact_id === contactId);
+  };
+
+  // Check if contact has overdue followup
+  const contactHasOverdueFollowup = (contactId: string) => {
+    const today = new Date().toISOString().split('T')[0];
+    return allPendingFollowups.some(f => f.contact_id === contactId && f.date < today);
+  };
+
+  // Filter and sort contacts
+  const filteredContacts = useMemo(() => {
+    let result = contacts.filter(contact => {
+      // City filter
+      if (cityFilter !== 'all') {
+        if (cityFilter === 'none' && contact.city) return false;
+        if (cityFilter !== 'none' && contact.city !== cityFilter) return false;
+      }
+
+      // Tag filter
+      if (tagFilter !== 'all') {
+        if (tagFilter === 'none' && contact.tag) return false;
+        if (tagFilter !== 'none' && contact.tag !== tagFilter) return false;
+      }
+
+      // Follow-up filter
+      if (followupFilter !== 'all') {
+        const hasPending = contactHasPendingFollowup(contact.id);
+        const hasOverdue = contactHasOverdueFollowup(contact.id);
+        if (followupFilter === 'has' && !hasPending) return false;
+        if (followupFilter === 'none' && hasPending) return false;
+        if (followupFilter === 'overdue' && !hasOverdue) return false;
+      }
+
+      // Search
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase();
+        return (
+          contact.name.toLowerCase().includes(query) ||
+          contact.company?.toLowerCase().includes(query) ||
+          contact.email?.toLowerCase().includes(query) ||
+          contact.role?.toLowerCase().includes(query) ||
+          contact.city?.toLowerCase().includes(query) ||
+          getTagInfo(contact.tag).label.toLowerCase().includes(query)
+        );
+      }
+
+      return true;
+    });
+
+    // Sort
+    result.sort((a, b) => {
+      let aVal: string | null = null;
+      let bVal: string | null = null;
+
+      switch (sortField) {
+        case 'name':
+          aVal = a.name;
+          bVal = b.name;
+          break;
+        case 'company':
+          aVal = a.company;
+          bVal = b.company;
+          break;
+        case 'city':
+          aVal = a.city;
+          bVal = b.city;
+          break;
+        case 'updated_at':
+          aVal = a.updated_at;
+          bVal = b.updated_at;
+          break;
+        case 'created_at':
+          aVal = a.created_at;
+          bVal = b.created_at;
+          break;
+      }
+
+      if (!aVal && !bVal) return 0;
+      if (!aVal) return 1;
+      if (!bVal) return -1;
+
+      const cmp = aVal.localeCompare(bVal);
+      return sortOrder === 'asc' ? cmp : -cmp;
+    });
+
+    return result;
+  }, [contacts, cityFilter, tagFilter, followupFilter, searchQuery, sortField, sortOrder, allPendingFollowups]);
+
+  // Group contacts by tag for Kanban view
+  const contactsByTag = useMemo(() => {
+    const groups: Record<string, Contact[]> = {};
+    FUNNEL_STAGES.forEach(stage => {
+      groups[stage.value!] = filteredContacts.filter(c => c.tag === stage.value);
+    });
+    // Add "Sem tag" group
+    groups['none'] = filteredContacts.filter(c => !c.tag);
+    return groups;
+  }, [filteredContacts]);
+
+  // Selection handlers
+  const handleToggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedIds.size === filteredContacts.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredContacts.map(c => c.id)));
+    }
+  };
+
+  const handleClearSelection = () => {
+    setSelectedIds(new Set());
+  };
+
+  // Bulk actions
+  const handleBulkApplyTag = async () => {
+    if (selectedIds.size === 0) return;
+
+    try {
+      const promises = Array.from(selectedIds).map(id =>
+        api.updateContact(id, { tag: bulkTag })
+      );
+      await Promise.all(promises);
+
+      // Update local state
+      setContacts(prev =>
+        prev.map(c => selectedIds.has(c.id) ? { ...c, tag: bulkTag } : c)
+      );
+
+      setSelectedIds(new Set());
+      setShowBulkActions(false);
+      setBulkTag(null);
+    } catch (err) {
+      console.error('Erro ao aplicar tag em lote:', err);
+    }
+  };
+
+  const handleBulkCreateFollowup = async () => {
+    if (selectedIds.size === 0 || !bulkFollowupDays) return;
+
+    const date = addDaysToDate(bulkFollowupDays);
+
+    try {
+      const promises = Array.from(selectedIds).map(id =>
+        api.createFollowup(id, date, '')
+      );
+      await Promise.all(promises);
+
+      await loadPendingFollowups();
+
+      setSelectedIds(new Set());
+      setShowBulkActions(false);
+      setBulkFollowupDays(null);
+    } catch (err) {
+      console.error('Erro ao criar follow-ups em lote:', err);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`Excluir ${selectedIds.size} contato(s)?`)) return;
+
+    try {
+      const promises = Array.from(selectedIds).map(id =>
+        api.deleteContact(id)
+      );
+      await Promise.all(promises);
+
+      setContacts(prev => prev.filter(c => !selectedIds.has(c.id)));
+      setSelectedIds(new Set());
+      setShowBulkActions(false);
+
+      if (selectedContact && selectedIds.has(selectedContact.id)) {
+        setSelectedContact(null);
+      }
+    } catch (err) {
+      console.error('Erro ao excluir contatos em lote:', err);
+    }
+  };
+
+  // Drag and drop for Kanban
+  const handleDragStart = (contact: Contact) => {
+    setDraggedContact(contact);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = async (newTag: ContactTag) => {
+    if (!draggedContact || draggedContact.tag === newTag) {
+      setDraggedContact(null);
+      return;
+    }
+
+    try {
+      await api.updateContact(draggedContact.id, { tag: newTag });
+      setContacts(prev =>
+        prev.map(c => c.id === draggedContact.id ? { ...c, tag: newTag } : c)
+      );
+    } catch (err) {
+      console.error('Erro ao atualizar contato:', err);
+    }
+
+    setDraggedContact(null);
+  };
 
   const handleNewContact = () => {
-    setFormData({ name: '', email: '', phone: '', company: '', role: '', tag: null });
+    setFormData({ name: '', email: '', phone: '', company: '', role: '', tag: null, city: '' });
     setIsEditing(true);
     setSelectedContact(null);
   };
@@ -136,6 +402,7 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
         company: selectedContact.company || '',
         role: selectedContact.role || '',
         tag: selectedContact.tag,
+        city: selectedContact.city || '',
       });
       setIsEditing(true);
     }
@@ -238,6 +505,7 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
     try {
       const followup = await api.createFollowup(selectedContact.id, date, '');
       setFollowups(prev => [...prev, followup].sort((a, b) => a.date.localeCompare(b.date)));
+      await loadPendingFollowups();
     } catch (err) {
       console.error('Erro ao criar follow-up:', err);
     }
@@ -251,6 +519,7 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
       setShowFollowupForm(false);
       setFollowupDate('');
       setFollowupDescription('');
+      await loadPendingFollowups();
     } catch (err) {
       console.error('Erro ao criar follow-up:', err);
     }
@@ -263,6 +532,7 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
         completed: !followup.completed,
       });
       setFollowups(prev => prev.map(f => (f.id === followup.id ? updated : f)));
+      await loadPendingFollowups();
     } catch (err) {
       console.error('Erro ao atualizar follow-up:', err);
     }
@@ -273,6 +543,7 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
     try {
       await api.deleteFollowup(selectedContact.id, followupId);
       setFollowups(prev => prev.filter(f => f.id !== followupId));
+      await loadPendingFollowups();
     } catch (err) {
       console.error('Erro ao excluir follow-up:', err);
     }
@@ -316,62 +587,73 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
   };
 
   const formatPhone = (phone: string) => {
-    // Remove tudo que não é número
     const numbers = phone.replace(/\D/g, '');
-
-    // Aplica máscara progressivamente: (XX) XXXXX-XXXX
     if (numbers.length === 0) return '';
     if (numbers.length <= 2) return `(${numbers}`;
     if (numbers.length <= 7) return `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`;
     if (numbers.length <= 11) return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7)}`;
-    // Limita a 11 dígitos
     return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`;
   };
 
   const getWhatsAppLink = (phone: string) => {
-    // Remove tudo que não é número
     const numbers = phone.replace(/\D/g, '');
-    // Adiciona código do Brasil se não tiver
     const fullNumber = numbers.length <= 11 ? `55${numbers}` : numbers;
     return `https://wa.me/${fullNumber}`;
   };
 
   const handlePhoneChange = (value: string) => {
-    // Remove caracteres não numéricos para salvar só números
-    const numbers = value.replace(/\D/g, '').slice(0, 11); // Limita a 11 dígitos
+    const numbers = value.replace(/\D/g, '').slice(0, 11);
     setFormData({ ...formData, phone: numbers });
+  };
+
+  const activeFiltersCount = [
+    cityFilter !== 'all',
+    tagFilter !== 'all',
+    followupFilter !== 'all',
+  ].filter(Boolean).length;
+
+  const clearAllFilters = () => {
+    setCityFilter('all');
+    setTagFilter('all');
+    setFollowupFilter('all');
+    setSearchQuery('');
   };
 
   if (!isOpen) return null;
 
   return (
     <div className="contacts-panel-overlay" onClick={onClose}>
-      <div className="contacts-panel" onClick={e => e.stopPropagation()}>
+      <div className="contacts-panel contacts-panel--fullscreen" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="contacts-panel__header">
-          <h2>
-            <User size={20} />
-            Contatos CRM
-          </h2>
-          <button onClick={onClose} className="btn btn-icon btn-ghost">
-            <X size={18} />
-          </button>
-        </div>
+          <div className="contacts-panel__header-left">
+            <User size={22} />
+            <h2>Contatos CRM</h2>
+            <span className="contacts-panel__header-count">{filteredContacts.length}</span>
+          </div>
 
-        <div className="contacts-panel__body">
-          {/* Lista de Contatos */}
-          <div className="contacts-panel__list">
-            <div className="contacts-panel__list-header">
-              <span>{filteredContacts.length} contatos</span>
-              <button onClick={handleNewContact} className="btn btn-primary btn-sm">
-                <Plus size={14} />
-                Novo
+          <div className="contacts-panel__header-center">
+            {/* View toggle */}
+            <div className="contacts-panel__view-toggle">
+              <button
+                onClick={() => setViewMode('list')}
+                className={`contacts-panel__view-btn ${viewMode === 'list' ? 'contacts-panel__view-btn--active' : ''}`}
+                title="Lista"
+              >
+                <List size={16} />
+              </button>
+              <button
+                onClick={() => setViewMode('kanban')}
+                className={`contacts-panel__view-btn ${viewMode === 'kanban' ? 'contacts-panel__view-btn--active' : ''}`}
+                title="Kanban do Funil"
+              >
+                <LayoutGrid size={16} />
               </button>
             </div>
 
-            {/* Search input */}
+            {/* Search */}
             <div className="contacts-panel__search">
-              <Search size={14} />
+              <Search size={16} />
               <input
                 type="text"
                 value={searchQuery}
@@ -381,153 +663,419 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
               />
               {searchQuery && (
                 <button onClick={() => setSearchQuery('')} className="contacts-panel__search-clear">
-                  <X size={12} />
+                  <X size={14} />
                 </button>
               )}
             </div>
 
-            <div className="contacts-panel__list-items">
-              {filteredContacts.map(contact => (
-                <button
-                  key={contact.id}
-                  onClick={() => handleSelectContact(contact)}
-                  className={`contacts-panel__list-item ${
-                    selectedContact?.id === contact.id ? 'contacts-panel__list-item--active' : ''
-                  }`}
-                >
-                  <div className="contacts-panel__list-item-avatar">
-                    {contact.name.charAt(0).toUpperCase()}
-                  </div>
-                  <div className="contacts-panel__list-item-info">
-                    <div className="contacts-panel__list-item-name-row">
-                      <span className="contacts-panel__list-item-name">{contact.name}</span>
-                      {contact.tag && (
-                        <span
-                          className="contacts-panel__list-item-tag"
-                          style={{ background: getTagInfo(contact.tag).color }}
-                        >
-                          {getTagInfo(contact.tag).label}
-                        </span>
-                      )}
-                    </div>
-                    {contact.company && (
-                      <span className="contacts-panel__list-item-company">{contact.company}</span>
-                    )}
-                  </div>
-                  {(contact.notes_count ?? 0) > 0 && (
-                    <span className="contacts-panel__list-item-notes">
-                      <MessageSquare size={12} />
-                      {contact.notes_count}
-                    </span>
-                  )}
-                </button>
-              ))}
+            {/* Filters toggle */}
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={`contacts-panel__filter-btn ${showFilters || activeFiltersCount > 0 ? 'contacts-panel__filter-btn--active' : ''}`}
+            >
+              <Filter size={16} />
+              Filtros
+              {activeFiltersCount > 0 && (
+                <span className="contacts-panel__filter-badge">{activeFiltersCount}</span>
+              )}
+            </button>
+          </div>
 
-              {filteredContacts.length === 0 && !loading && (
-                <div className="contacts-panel__empty">
-                  <User size={32} />
-                  <p>Nenhum contato ainda</p>
-                  <button onClick={handleNewContact} className="btn btn-primary btn-sm">
-                    <Plus size={14} />
-                    Criar primeiro contato
-                  </button>
-                </div>
+          <div className="contacts-panel__header-right">
+            <button onClick={handleNewContact} className="btn btn-primary">
+              <Plus size={16} />
+              Novo Contato
+            </button>
+            <button onClick={onClose} className="btn btn-icon btn-ghost">
+              <X size={20} />
+            </button>
+          </div>
+        </div>
+
+        {/* Filters bar */}
+        {showFilters && (
+          <div className="contacts-panel__filters">
+            <div className="contacts-panel__filters-row">
+              {/* Tag filter */}
+              <div className="contacts-panel__filter-group">
+                <label><Tag size={12} /> Etapa</label>
+                <select value={tagFilter} onChange={e => setTagFilter(e.target.value)}>
+                  <option value="all">Todas</option>
+                  <option value="none">Sem tag</option>
+                  {FUNNEL_STAGES.map(stage => (
+                    <option key={stage.value} value={stage.value!}>{stage.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* City filter */}
+              <div className="contacts-panel__filter-group">
+                <label><MapPin size={12} /> Cidade</label>
+                <select value={cityFilter} onChange={e => setCityFilter(e.target.value)}>
+                  <option value="all">Todas</option>
+                  <option value="none">Sem cidade</option>
+                  {availableCities.map(city => (
+                    <option key={city} value={city}>{city}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Follow-up filter */}
+              <div className="contacts-panel__filter-group">
+                <label><Bell size={12} /> Follow-up</label>
+                <select value={followupFilter} onChange={e => setFollowupFilter(e.target.value)}>
+                  <option value="all">Todos</option>
+                  <option value="has">Com follow-up</option>
+                  <option value="none">Sem follow-up</option>
+                  <option value="overdue">Atrasados</option>
+                </select>
+              </div>
+
+              {/* Sort */}
+              <div className="contacts-panel__filter-group">
+                <label><ArrowUpDown size={12} /> Ordenar</label>
+                <select value={`${sortField}-${sortOrder}`} onChange={e => {
+                  const [field, order] = e.target.value.split('-');
+                  setSortField(field as SortField);
+                  setSortOrder(order as SortOrder);
+                }}>
+                  <option value="name-asc">Nome A-Z</option>
+                  <option value="name-desc">Nome Z-A</option>
+                  <option value="company-asc">Empresa A-Z</option>
+                  <option value="city-asc">Cidade A-Z</option>
+                  <option value="updated_at-desc">Atualizado recente</option>
+                  <option value="created_at-desc">Criado recente</option>
+                </select>
+              </div>
+
+              {activeFiltersCount > 0 && (
+                <button onClick={clearAllFilters} className="contacts-panel__clear-filters">
+                  <X size={12} /> Limpar filtros
+                </button>
               )}
             </div>
           </div>
+        )}
 
-          {/* Detalhe / Formulário */}
-          <div className="contacts-panel__detail">
-            {isEditing ? (
-              // Formulário de edição
-              <div className="contacts-panel__form">
-                <h3>{selectedContact ? 'Editar Contato' : 'Novo Contato'}</h3>
+        {/* Bulk actions bar */}
+        {selectedIds.size > 0 && (
+          <div className="contacts-panel__bulk-bar">
+            <div className="contacts-panel__bulk-info">
+              <button onClick={handleClearSelection} className="btn btn-ghost btn-sm">
+                <X size={14} />
+              </button>
+              <span>{selectedIds.size} selecionado(s)</span>
+            </div>
+            <div className="contacts-panel__bulk-actions">
+              <div className="contacts-panel__bulk-action">
+                <select value={bulkTag || ''} onChange={e => setBulkTag(e.target.value as ContactTag || null)}>
+                  <option value="">Aplicar tag...</option>
+                  {TAG_OPTIONS.map(opt => (
+                    <option key={opt.value || 'none'} value={opt.value || ''}>{opt.label}</option>
+                  ))}
+                </select>
+                <button onClick={handleBulkApplyTag} disabled={bulkTag === null && bulkTag !== null} className="btn btn-sm btn-secondary">
+                  Aplicar
+                </button>
+              </div>
+              <div className="contacts-panel__bulk-action">
+                <select value={bulkFollowupDays || ''} onChange={e => setBulkFollowupDays(e.target.value ? Number(e.target.value) : null)}>
+                  <option value="">Follow-up em...</option>
+                  <option value="7">7 dias</option>
+                  <option value="15">15 dias</option>
+                  <option value="30">30 dias</option>
+                  <option value="90">3 meses</option>
+                </select>
+                <button onClick={handleBulkCreateFollowup} disabled={!bulkFollowupDays} className="btn btn-sm btn-secondary">
+                  Criar
+                </button>
+              </div>
+              <button onClick={handleBulkDelete} className="btn btn-sm btn-danger">
+                <Trash2 size={14} /> Excluir
+              </button>
+            </div>
+          </div>
+        )}
 
-                <div className="form-group">
-                  <label className="label">Nome *</label>
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={e => setFormData({ ...formData, name: e.target.value })}
-                    className="input"
-                    placeholder="Nome do contato"
-                    autoFocus
-                  />
-                </div>
+        <div className="contacts-panel__body">
+          {/* Contacts List/Kanban */}
+          {viewMode === 'list' ? (
+            <div className="contacts-panel__list-container">
+              {/* List header */}
+              <div className="contacts-panel__list-header">
+                <button onClick={handleSelectAll} className="contacts-panel__select-all" title="Selecionar todos">
+                  {selectedIds.size === filteredContacts.length && filteredContacts.length > 0 ? (
+                    <CheckSquare size={16} />
+                  ) : (
+                    <Square size={16} />
+                  )}
+                </button>
+                <span className="contacts-panel__list-col contacts-panel__list-col--name">Nome</span>
+                <span className="contacts-panel__list-col contacts-panel__list-col--company">Empresa</span>
+                <span className="contacts-panel__list-col contacts-panel__list-col--city">Cidade</span>
+                <span className="contacts-panel__list-col contacts-panel__list-col--tag">Etapa</span>
+                <span className="contacts-panel__list-col contacts-panel__list-col--status">Status</span>
+              </div>
 
-                <div className="form-group">
-                  <label className="label">
-                    <Mail size={14} /> Email
-                  </label>
-                  <input
-                    type="email"
-                    value={formData.email}
-                    onChange={e => setFormData({ ...formData, email: e.target.value })}
-                    className="input"
-                    placeholder="email@exemplo.com"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="label">
-                    <Phone size={14} /> Telefone
-                  </label>
-                  <input
-                    type="tel"
-                    value={formatPhone(formData.phone)}
-                    onChange={e => handlePhoneChange(e.target.value)}
-                    className="input"
-                    placeholder="(11) 99999-9999"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="label">
-                    <Building size={14} /> Empresa
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.company}
-                    onChange={e => setFormData({ ...formData, company: e.target.value })}
-                    className="input"
-                    placeholder="Nome da empresa"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="label">
-                    <Briefcase size={14} /> Cargo
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.role}
-                    onChange={e => setFormData({ ...formData, role: e.target.value })}
-                    className="input"
-                    placeholder="Cargo/Função"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="label">
-                    <Tag size={14} /> Etapa do Funil
-                  </label>
-                  <div className="contacts-panel__tag-selector">
-                    {TAG_OPTIONS.map(option => (
-                      <button
-                        key={option.value || 'none'}
-                        type="button"
-                        onClick={() => setFormData({ ...formData, tag: option.value })}
-                        className={`contacts-panel__tag-option ${formData.tag === option.value ? 'contacts-panel__tag-option--active' : ''}`}
-                        style={{
-                          '--tag-color': option.color,
-                          borderColor: formData.tag === option.value ? option.color : undefined,
-                          background: formData.tag === option.value ? `${option.color}15` : undefined,
-                        } as React.CSSProperties}
-                      >
-                        <span className="contacts-panel__tag-dot" style={{ background: option.color }} />
-                        {option.label}
+              {/* List items */}
+              <div className="contacts-panel__list-items">
+                {loading ? (
+                  <div className="contacts-panel__loading">
+                    <Loader2 size={24} className="spin" />
+                    <span>Carregando contatos...</span>
+                  </div>
+                ) : filteredContacts.length === 0 ? (
+                  <div className="contacts-panel__empty">
+                    <User size={48} />
+                    <p>{contacts.length === 0 ? 'Nenhum contato ainda' : 'Nenhum contato encontrado'}</p>
+                    {contacts.length === 0 && (
+                      <button onClick={handleNewContact} className="btn btn-primary">
+                        <Plus size={16} /> Criar primeiro contato
                       </button>
+                    )}
+                  </div>
+                ) : (
+                  filteredContacts.map(contact => {
+                    const hasOverdue = contactHasOverdueFollowup(contact.id);
+                    const hasPending = contactHasPendingFollowup(contact.id);
+
+                    return (
+                      <div
+                        key={contact.id}
+                        className={`contacts-panel__list-row ${
+                          selectedContact?.id === contact.id ? 'contacts-panel__list-row--active' : ''
+                        } ${selectedIds.has(contact.id) ? 'contacts-panel__list-row--selected' : ''}`}
+                      >
+                        <button
+                          onClick={() => handleToggleSelect(contact.id)}
+                          className="contacts-panel__row-checkbox"
+                        >
+                          {selectedIds.has(contact.id) ? <CheckSquare size={16} /> : <Square size={16} />}
+                        </button>
+                        <button
+                          onClick={() => handleSelectContact(contact)}
+                          className="contacts-panel__list-row-content"
+                        >
+                          <div className="contacts-panel__list-col contacts-panel__list-col--name">
+                            <div className="contacts-panel__row-avatar">
+                              {contact.name.charAt(0).toUpperCase()}
+                            </div>
+                            <span>{contact.name}</span>
+                          </div>
+                          <span className="contacts-panel__list-col contacts-panel__list-col--company">
+                            {contact.company || '—'}
+                          </span>
+                          <span className="contacts-panel__list-col contacts-panel__list-col--city">
+                            {contact.city || '—'}
+                          </span>
+                          <span className="contacts-panel__list-col contacts-panel__list-col--tag">
+                            {contact.tag ? (
+                              <span
+                                className="contacts-panel__tag-badge"
+                                style={{ background: getTagInfo(contact.tag).color }}
+                              >
+                                {getTagInfo(contact.tag).label}
+                              </span>
+                            ) : (
+                              <span className="contacts-panel__tag-badge contacts-panel__tag-badge--empty">—</span>
+                            )}
+                          </span>
+                          <span className="contacts-panel__list-col contacts-panel__list-col--status">
+                            {hasOverdue && (
+                              <span className="contacts-panel__status-badge contacts-panel__status-badge--overdue" title="Follow-up atrasado">
+                                <AlertCircle size={14} />
+                              </span>
+                            )}
+                            {hasPending && !hasOverdue && (
+                              <span className="contacts-panel__status-badge contacts-panel__status-badge--pending" title="Follow-up pendente">
+                                <Bell size={14} />
+                              </span>
+                            )}
+                            {(contact.notes_count ?? 0) > 0 && (
+                              <span className="contacts-panel__status-badge" title={`${contact.notes_count} nota(s)`}>
+                                <MessageSquare size={14} />
+                                <span>{contact.notes_count}</span>
+                              </span>
+                            )}
+                          </span>
+                        </button>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          ) : (
+            /* Kanban View */
+            <div className="contacts-panel__kanban">
+              {/* Sem tag column */}
+              <div
+                className="contacts-panel__kanban-column"
+                onDragOver={handleDragOver}
+                onDrop={() => handleDrop(null)}
+              >
+                <div className="contacts-panel__kanban-column-header" style={{ borderColor: '#71717A' }}>
+                  <span>Sem Tag</span>
+                  <span className="contacts-panel__kanban-column-count">{contactsByTag['none']?.length || 0}</span>
+                </div>
+                <div className="contacts-panel__kanban-column-body">
+                  {contactsByTag['none']?.map(contact => (
+                    <KanbanCard
+                      key={contact.id}
+                      contact={contact}
+                      onDragStart={() => handleDragStart(contact)}
+                      onClick={() => handleSelectContact(contact)}
+                      isSelected={selectedContact?.id === contact.id}
+                      hasOverdue={contactHasOverdueFollowup(contact.id)}
+                      hasPending={contactHasPendingFollowup(contact.id)}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Funnel stage columns */}
+              {FUNNEL_STAGES.map(stage => (
+                <div
+                  key={stage.value}
+                  className="contacts-panel__kanban-column"
+                  onDragOver={handleDragOver}
+                  onDrop={() => handleDrop(stage.value)}
+                >
+                  <div className="contacts-panel__kanban-column-header" style={{ borderColor: stage.color }}>
+                    <span style={{ color: stage.color }}>{stage.label}</span>
+                    <span className="contacts-panel__kanban-column-count">{contactsByTag[stage.value!]?.length || 0}</span>
+                  </div>
+                  <div className="contacts-panel__kanban-column-body">
+                    {contactsByTag[stage.value!]?.map(contact => (
+                      <KanbanCard
+                        key={contact.id}
+                        contact={contact}
+                        onDragStart={() => handleDragStart(contact)}
+                        onClick={() => handleSelectContact(contact)}
+                        isSelected={selectedContact?.id === contact.id}
+                        hasOverdue={contactHasOverdueFollowup(contact.id)}
+                        hasPending={contactHasPendingFollowup(contact.id)}
+                      />
                     ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Contact Detail Panel */}
+          <div className={`contacts-panel__detail ${selectedContact || isEditing ? 'contacts-panel__detail--open' : ''}`}>
+            {isEditing ? (
+              // Edit form
+              <div className="contacts-panel__form">
+                <div className="contacts-panel__form-header">
+                  <h3>{selectedContact ? 'Editar Contato' : 'Novo Contato'}</h3>
+                  <button onClick={() => setIsEditing(false)} className="btn btn-ghost btn-sm">
+                    <X size={16} />
+                  </button>
+                </div>
+
+                <div className="contacts-panel__form-body">
+                  <div className="form-group">
+                    <label className="label">Nome *</label>
+                    <input
+                      type="text"
+                      value={formData.name}
+                      onChange={e => setFormData({ ...formData, name: e.target.value })}
+                      className="input"
+                      placeholder="Nome do contato"
+                      autoFocus
+                    />
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label className="label"><Mail size={14} /> Email</label>
+                      <input
+                        type="email"
+                        value={formData.email}
+                        onChange={e => setFormData({ ...formData, email: e.target.value })}
+                        className="input"
+                        placeholder="email@exemplo.com"
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label className="label"><Phone size={14} /> Telefone</label>
+                      <input
+                        type="tel"
+                        value={formatPhone(formData.phone)}
+                        onChange={e => handlePhoneChange(e.target.value)}
+                        className="input"
+                        placeholder="(11) 99999-9999"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label className="label"><Building size={14} /> Empresa</label>
+                      <input
+                        type="text"
+                        value={formData.company}
+                        onChange={e => setFormData({ ...formData, company: e.target.value })}
+                        className="input"
+                        placeholder="Nome da empresa"
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label className="label"><Briefcase size={14} /> Cargo</label>
+                      <input
+                        type="text"
+                        value={formData.role}
+                        onChange={e => setFormData({ ...formData, role: e.target.value })}
+                        className="input"
+                        placeholder="Cargo/Função"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="label"><MapPin size={14} /> Cidade</label>
+                    <input
+                      type="text"
+                      value={formData.city}
+                      onChange={e => setFormData({ ...formData, city: e.target.value })}
+                      className="input"
+                      placeholder="Cidade"
+                      list="city-suggestions"
+                    />
+                    <datalist id="city-suggestions">
+                      <option value="Gramado" />
+                      <option value="Balneário Camboriú" />
+                      <option value="São Paulo" />
+                      <option value="Rio de Janeiro" />
+                      <option value="Curitiba" />
+                      <option value="Porto Alegre" />
+                    </datalist>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="label"><Tag size={14} /> Etapa do Funil</label>
+                    <div className="contacts-panel__tag-selector">
+                      {TAG_OPTIONS.map(option => (
+                        <button
+                          key={option.value || 'none'}
+                          type="button"
+                          onClick={() => setFormData({ ...formData, tag: option.value })}
+                          className={`contacts-panel__tag-option ${formData.tag === option.value ? 'contacts-panel__tag-option--active' : ''}`}
+                          style={{
+                            '--tag-color': option.color,
+                            borderColor: formData.tag === option.value ? option.color : undefined,
+                            background: formData.tag === option.value ? `${option.color}15` : undefined,
+                          } as React.CSSProperties}
+                        >
+                          <span className="contacts-panel__tag-dot" style={{ background: option.color }} />
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
@@ -535,17 +1083,17 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
                   <button onClick={() => setIsEditing(false)} className="btn btn-secondary">
                     Cancelar
                   </button>
-                  <button onClick={handleSaveContact} className="btn btn-primary">
+                  <button onClick={handleSaveContact} className="btn btn-primary" disabled={!formData.name.trim()}>
                     Salvar
                   </button>
                 </div>
               </div>
             ) : selectedContact ? (
-              // Detalhes do contato
+              // Contact details
               <div className="contacts-panel__contact">
                 <div className="contacts-panel__contact-header">
                   <button onClick={() => setSelectedContact(null)} className="btn btn-ghost btn-sm">
-                    <ChevronLeft size={16} />
+                    <X size={16} />
                   </button>
                   <div className="contacts-panel__contact-avatar">
                     {selectedContact.name.charAt(0).toUpperCase()}
@@ -553,9 +1101,15 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
                   <div className="contacts-panel__contact-info">
                     <h3>{selectedContact.name}</h3>
                     {selectedContact.role && selectedContact.company && (
-                      <p>
-                        {selectedContact.role} @ {selectedContact.company}
-                      </p>
+                      <p>{selectedContact.role} @ {selectedContact.company}</p>
+                    )}
+                    {selectedContact.tag && (
+                      <span
+                        className="contacts-panel__tag-badge"
+                        style={{ background: getTagInfo(selectedContact.tag).color }}
+                      >
+                        {getTagInfo(selectedContact.tag).label}
+                      </span>
                     )}
                   </div>
                   <div className="contacts-panel__contact-actions">
@@ -581,11 +1135,7 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
                       <Phone size={14} />
                       <span className="contacts-panel__phone-number">{formatPhone(selectedContact.phone)}</span>
                       <div className="contacts-panel__phone-actions">
-                        <a
-                          href={`tel:${selectedContact.phone}`}
-                          className="contacts-panel__phone-btn"
-                          title="Ligar"
-                        >
+                        <a href={`tel:${selectedContact.phone}`} className="contacts-panel__phone-btn" title="Ligar">
                           <Phone size={14} />
                         </a>
                         <a
@@ -608,21 +1158,23 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
                       <span>{selectedContact.company}</span>
                     </div>
                   )}
+                  {selectedContact.city && (
+                    <div className="contacts-panel__info-card">
+                      <MapPin size={14} />
+                      <span>{selectedContact.city}</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Follow-ups */}
                 <div className="contacts-panel__followups">
                   <div className="contacts-panel__followups-header">
-                    <h4>
-                      <Bell size={16} />
-                      Follow-ups
-                    </h4>
+                    <h4><Bell size={16} /> Follow-ups</h4>
                     <div className="contacts-panel__followups-quick">
                       <button onClick={() => handleQuickFollowup(7)} className="btn btn-ghost btn-xs">7d</button>
                       <button onClick={() => handleQuickFollowup(15)} className="btn btn-ghost btn-xs">15d</button>
                       <button onClick={() => handleQuickFollowup(30)} className="btn btn-ghost btn-xs">30d</button>
                       <button onClick={() => handleQuickFollowup(90)} className="btn btn-ghost btn-xs">3m</button>
-                      <button onClick={() => handleQuickFollowup(180)} className="btn btn-ghost btn-xs">6m</button>
                       <button onClick={() => setShowFollowupForm(true)} className="btn btn-ghost btn-xs">
                         <Calendar size={12} />
                       </button>
@@ -646,24 +1198,66 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
                         placeholder="Descrição (opcional)"
                       />
                       <div className="contacts-panel__followup-form-actions">
-                        <button onClick={() => setShowFollowupForm(false)} className="btn btn-ghost btn-xs">
-                          Cancelar
-                        </button>
-                        <button onClick={handleCreateFollowup} disabled={!followupDate} className="btn btn-primary btn-xs">
-                          Adicionar
-                        </button>
+                        <button onClick={() => setShowFollowupForm(false)} className="btn btn-ghost btn-xs">Cancelar</button>
+                        <button onClick={handleCreateFollowup} disabled={!followupDate} className="btn btn-primary btn-xs">Adicionar</button>
                       </div>
                     </div>
                   )}
+
+                  {/* Mini-timeline */}
+                  {followups.length > 0 && (() => {
+                    const pendingFollowups = followups.filter(f => !f.completed);
+                    if (pendingFollowups.length === 0) return null;
+
+                    const dates = pendingFollowups.map(f => new Date(f.date + 'T00:00:00').getTime());
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const todayTime = today.getTime();
+
+                    const minDate = Math.min(todayTime, ...dates);
+                    const maxDate = Math.max(todayTime, ...dates);
+                    const range = maxDate - minDate || 1;
+                    const padding = range * 0.05;
+                    const start = minDate - padding;
+                    const end = maxDate + padding;
+                    const totalRange = end - start || 1;
+
+                    const getPos = (time: number) => ((time - start) / totalRange) * 100;
+                    const todayPos = getPos(todayTime);
+
+                    return (
+                      <div className="contacts-panel__mini-timeline">
+                        <div className="contacts-panel__mini-timeline-bar">
+                          <div className="contacts-panel__mini-timeline-today" style={{ left: `${todayPos}%` }} title="Hoje">
+                            <span className="contacts-panel__mini-timeline-today-label">Hoje</span>
+                          </div>
+                          {pendingFollowups.map(f => {
+                            const fTime = new Date(f.date + 'T00:00:00').getTime();
+                            const pos = getPos(fTime);
+                            const status = getFollowupStatus(f.date, 0);
+                            return (
+                              <div
+                                key={f.id}
+                                className={`contacts-panel__mini-timeline-marker contacts-panel__mini-timeline-marker--${status}`}
+                                style={{ left: `${pos}%` }}
+                                title={`${formatFollowupDate(f.date)}${f.description ? ': ' + f.description : ''}`}
+                              />
+                            );
+                          })}
+                        </div>
+                        <div className="contacts-panel__mini-timeline-labels">
+                          <span>{new Date(minDate).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}</span>
+                          <span>{new Date(maxDate).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   <div className="contacts-panel__followups-list">
                     {followups.map(followup => {
                       const status = getFollowupStatus(followup.date, followup.completed);
                       return (
-                        <div
-                          key={followup.id}
-                          className={`contacts-panel__followup contacts-panel__followup--${status}`}
-                        >
+                        <div key={followup.id} className={`contacts-panel__followup contacts-panel__followup--${status}`}>
                           <button
                             onClick={() => handleToggleFollowup(followup)}
                             className={`contacts-panel__followup-check ${followup.completed ? 'contacts-panel__followup-check--done' : ''}`}
@@ -679,29 +1273,21 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
                               <span className="contacts-panel__followup-desc">{followup.description}</span>
                             )}
                           </div>
-                          <button
-                            onClick={() => handleDeleteFollowup(followup.id)}
-                            className="contacts-panel__followup-delete"
-                          >
+                          <button onClick={() => handleDeleteFollowup(followup.id)} className="contacts-panel__followup-delete">
                             <X size={12} />
                           </button>
                         </div>
                       );
                     })}
                     {followups.length === 0 && (
-                      <p className="contacts-panel__followups-empty">
-                        Nenhum follow-up agendado
-                      </p>
+                      <p className="contacts-panel__followups-empty">Nenhum follow-up agendado</p>
                     )}
                   </div>
                 </div>
 
-                {/* Histórico de notas */}
+                {/* Notes history */}
                 <div className="contacts-panel__notes">
-                  <h4>
-                    <MessageSquare size={16} />
-                    Histórico de Notas
-                  </h4>
+                  <h4><MessageSquare size={16} /> Histórico de Notas</h4>
 
                   <div className="contacts-panel__notes-input">
                     <div className="contacts-panel__notes-input-wrapper">
@@ -724,18 +1310,9 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
                     <div className="contacts-panel__notes-input-actions">
                       <label className="btn btn-ghost contacts-panel__image-btn">
                         <Image size={16} />
-                        <input
-                          type="file"
-                          accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
-                          onChange={handleImageSelect}
-                          hidden
-                        />
+                        <input type="file" accept="image/jpeg,image/jpg,image/png,image/gif,image/webp" onChange={handleImageSelect} hidden />
                       </label>
-                      <button
-                        onClick={handleAddNote}
-                        disabled={(!newNote.trim() && !selectedImage) || sendingNote}
-                        className="btn btn-primary"
-                      >
+                      <button onClick={handleAddNote} disabled={(!newNote.trim() && !selectedImage) || sendingNote} className="btn btn-primary">
                         {sendingNote ? <Loader2 size={14} className="spin" /> : <Send size={14} />}
                       </button>
                     </div>
@@ -745,19 +1322,12 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
                     {selectedContact.notes?.map(note => (
                       <div key={note.id} className="contacts-panel__note">
                         <div className="contacts-panel__note-header">
-                          <span className="contacts-panel__note-date">
-                            {formatDate(note.created_at)}
-                          </span>
-                          <button
-                            onClick={() => handleDeleteNote(note.id)}
-                            className="contacts-panel__note-delete"
-                          >
+                          <span className="contacts-panel__note-date">{formatDate(note.created_at)}</span>
+                          <button onClick={() => handleDeleteNote(note.id)} className="contacts-panel__note-delete">
                             <X size={12} />
                           </button>
                         </div>
-                        {note.content && (
-                          <p className="contacts-panel__note-content">{note.content}</p>
-                        )}
+                        {note.content && <p className="contacts-panel__note-content">{note.content}</p>}
                         {note.image_path && (
                           <div className="contacts-panel__note-image">
                             <img
@@ -769,17 +1339,13 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
                         )}
                       </div>
                     ))}
-
                     {(!selectedContact.notes || selectedContact.notes.length === 0) && (
-                      <p className="contacts-panel__notes-empty">
-                        Nenhuma nota ainda. Adicione a primeira!
-                      </p>
+                      <p className="contacts-panel__notes-empty">Nenhuma nota ainda. Adicione a primeira!</p>
                     )}
                   </div>
                 </div>
               </div>
             ) : (
-              // Estado vazio
               <div className="contacts-panel__placeholder">
                 <User size={48} />
                 <p>Selecione um contato para ver detalhes</p>
@@ -788,6 +1354,50 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// Kanban Card component
+interface KanbanCardProps {
+  contact: Contact;
+  onDragStart: () => void;
+  onClick: () => void;
+  isSelected: boolean;
+  hasOverdue: boolean;
+  hasPending: boolean;
+}
+
+function KanbanCard({ contact, onDragStart, onClick, isSelected, hasOverdue, hasPending }: KanbanCardProps) {
+  return (
+    <div
+      draggable
+      onDragStart={onDragStart}
+      onClick={onClick}
+      className={`contacts-panel__kanban-card ${isSelected ? 'contacts-panel__kanban-card--selected' : ''}`}
+    >
+      <div className="contacts-panel__kanban-card-header">
+        <div className="contacts-panel__kanban-card-avatar">
+          {contact.name.charAt(0).toUpperCase()}
+        </div>
+        <div className="contacts-panel__kanban-card-info">
+          <span className="contacts-panel__kanban-card-name">{contact.name}</span>
+          {contact.company && (
+            <span className="contacts-panel__kanban-card-company">{contact.company}</span>
+          )}
+        </div>
+        {(hasOverdue || hasPending) && (
+          <span className={`contacts-panel__kanban-card-indicator ${hasOverdue ? 'contacts-panel__kanban-card-indicator--overdue' : ''}`}>
+            {hasOverdue ? <AlertCircle size={12} /> : <Bell size={12} />}
+          </span>
+        )}
+      </div>
+      {contact.city && (
+        <div className="contacts-panel__kanban-card-footer">
+          <MapPin size={10} />
+          <span>{contact.city}</span>
+        </div>
+      )}
     </div>
   );
 }
