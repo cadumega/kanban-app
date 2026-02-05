@@ -112,6 +112,84 @@ npx vercel --prod --yes
 
 ---
 
+## 2026-02-05 - Correções de UX no CRM
+
+### Bug 6: Grid da tabela do CRM desalinhado
+**Contexto:** Modo tabela (lista) do CRM - colunas não mostravam dados
+
+**Problema:** O CSS usava `grid-template-columns` com 7 colunas, mas o HTML tinha estrutura aninhada (checkbox + botão com conteúdo). Os dados ficavam todos empilhados na primeira coluna.
+
+**Causa:** O header usava um grid flat, mas as rows tinham checkbox + botão wrapper. O grid não se propagava para os elementos internos do botão.
+
+**Solução:** Reestruturar para grid de 2 colunas no nível da row (checkbox + conteúdo), e criar um sub-grid no conteúdo:
+```css
+/* Row: 2 colunas */
+.contacts-panel__list-row {
+  grid-template-columns: 40px 1fr;
+}
+
+/* Conteúdo: 5 sub-colunas */
+.contacts-panel__list-row-content {
+  display: grid;
+  grid-template-columns: 1.8fr 1.5fr 1fr 100px 80px;
+}
+
+/* Header: mesma estrutura */
+.contacts-panel__list-header-cols {
+  grid-template-columns: 1.8fr 1.5fr 1fr 100px 80px;
+}
+```
+
+---
+
+### Bug 7: Textos invisíveis no modo dark
+**Contexto:** CRM em dark mode - vários textos com contraste insuficiente
+
+**Problema:** Colunas da tabela (empresa, cidade), headers, filtros e área de busca usavam cores que ficavam invisíveis no fundo escuro.
+
+**Causa:** Classes CSS usavam `var(--text-secondary)` e `var(--text-muted)` sem override específico para dark mode, resultando em textos cinza-escuro sobre fundo escuro.
+
+**Solução:** Adicionar seletores `[data-theme="dark"]` específicos para todos os elementos do CRM:
+```css
+[data-theme="dark"] .contacts-panel__col-company {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .contacts-panel__list-header {
+  color: var(--text-secondary);
+  background: var(--bg-primary);
+}
+```
+
+---
+
+### Bug 8: Área de busca e filtros com design simples demais
+**Contexto:** Header do CRM - campo de busca e dropdowns de filtro
+
+**Problema:** Campos de busca e filtros tinham padding pequeno, sem efeitos de foco, visual inconsistente entre light/dark mode.
+
+**Solução:** Redesign completo:
+- Busca: `border-radius: 12px`, `min-width: 300px`, efeito glow no focus
+- Filtros: padding maior (`8px 32px`), hover states, `min-width: 140px`
+- Botão "Filtros": mesmo estilo arredondado da busca
+- View toggle (Lista/Kanban): padding interno com cantos arredondados
+- Clear filters: hover com background vermelho claro
+```css
+.contacts-panel__header-search:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+}
+```
+
+---
+
+### Melhoria 1: Ordenação padrão por empresa
+**Contexto:** Lista de contatos no CRM
+
+**Mudança:** Valor padrão do `sortField` alterado de `'name'` para `'company'` e `sortOrder: 'asc'` — contatos agora aparecem organizados por empresa em ordem alfabética ao abrir o CRM.
+
+---
+
 ## Template para novos erros
 
 ### Erro: [Título descritivo]
@@ -133,7 +211,7 @@ npx vercel --prod --yes
 
 ---
 
-## URLs de Produção (Atualizado: 2026-01-21)
+## URLs de Produção (Atualizado: 2026-02-05)
 
 | Serviço | URL |
 |---------|-----|
