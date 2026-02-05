@@ -695,8 +695,8 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
             <div className="contacts-panel__filters-row">
               {/* Tag filter */}
               <div className="contacts-panel__filter-group">
-                <label><Tag size={12} /> Etapa</label>
-                <select value={tagFilter} onChange={e => setTagFilter(e.target.value)}>
+                <label className="contacts-panel__filter-label"><Tag size={12} /> Etapa</label>
+                <select className="contacts-panel__filter-select" value={tagFilter} onChange={e => setTagFilter(e.target.value)}>
                   <option value="all">Todas</option>
                   <option value="none">Sem tag</option>
                   {FUNNEL_STAGES.map(stage => (
@@ -707,8 +707,8 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
 
               {/* City filter */}
               <div className="contacts-panel__filter-group">
-                <label><MapPin size={12} /> Cidade</label>
-                <select value={cityFilter} onChange={e => setCityFilter(e.target.value)}>
+                <label className="contacts-panel__filter-label"><MapPin size={12} /> Cidade</label>
+                <select className="contacts-panel__filter-select" value={cityFilter} onChange={e => setCityFilter(e.target.value)}>
                   <option value="all">Todas</option>
                   <option value="none">Sem cidade</option>
                   {availableCities.map(city => (
@@ -719,8 +719,8 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
 
               {/* Follow-up filter */}
               <div className="contacts-panel__filter-group">
-                <label><Bell size={12} /> Follow-up</label>
-                <select value={followupFilter} onChange={e => setFollowupFilter(e.target.value)}>
+                <label className="contacts-panel__filter-label"><Bell size={12} /> Follow-up</label>
+                <select className="contacts-panel__filter-select" value={followupFilter} onChange={e => setFollowupFilter(e.target.value)}>
                   <option value="all">Todos</option>
                   <option value="has">Com follow-up</option>
                   <option value="none">Sem follow-up</option>
@@ -730,8 +730,8 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
 
               {/* Sort */}
               <div className="contacts-panel__filter-group">
-                <label><ArrowUpDown size={12} /> Ordenar</label>
-                <select value={`${sortField}-${sortOrder}`} onChange={e => {
+                <label className="contacts-panel__filter-label"><ArrowUpDown size={12} /> Ordenar</label>
+                <select className="contacts-panel__filter-select" value={`${sortField}-${sortOrder}`} onChange={e => {
                   const [field, order] = e.target.value.split('-');
                   setSortField(field as SortField);
                   setSortOrder(order as SortOrder);

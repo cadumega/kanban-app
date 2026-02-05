@@ -263,18 +263,38 @@ input, textarea, select {
 /* Form Elements */
 .input {
   width: 100%;
-  padding: 10px 12px;
+  padding: 11px 14px;
   font-size: 14px;
-  border: 1px solid var(--border);
+  border: 1.5px solid var(--border);
   border-radius: var(--radius);
   background: var(--bg-secondary);
   color: var(--text-primary);
-  transition: border-color var(--transition-fast);
+  transition: all var(--transition-fast);
+}
+
+.input:hover {
+  border-color: var(--text-muted);
 }
 
 .input:focus {
   outline: none;
   border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+[data-theme="dark"] .input {
+  background: var(--bg-column);
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .input:hover {
+  border-color: var(--text-muted);
+}
+
+[data-theme="dark"] .input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.15);
 }
 
 .input::placeholder {
@@ -295,15 +315,37 @@ input, textarea, select {
 }
 
 .label {
-  display: block;
-  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 0.01em;
+}
+
+.label svg {
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+[data-theme="dark"] .label {
   color: var(--text-secondary);
 }
 
+[data-theme="dark"] .label svg {
+  color: var(--accent);
+}
+
 .form-group {
-  margin-bottom: 16px;
+  margin-bottom: 18px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
 }
 
 /* Badge */
