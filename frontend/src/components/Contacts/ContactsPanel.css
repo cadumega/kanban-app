@@ -230,17 +230,20 @@
 /* Filters Bar                                  */
 /* ============================================ */
 .contacts-panel__filters {
-  display: flex;
-  align-items: center;
-  gap: 16px;
   padding: 14px 24px;
   background: var(--bg-column);
   border-bottom: 1px solid var(--border);
-  flex-wrap: wrap;
 }
 
 [data-theme="dark"] .contacts-panel__filters {
   background: rgba(39, 39, 42, 0.5);
+}
+
+.contacts-panel__filters-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
 .contacts-panel__filter-group {
@@ -554,48 +557,6 @@
   color: var(--accent);
 }
 
-.contacts-panel__list-header-check {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.contacts-panel__list-checkbox {
-  width: 18px;
-  height: 18px;
-  border-radius: 4px;
-  border: 2px solid var(--border);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: transparent;
-  background: var(--bg-secondary);
-}
-
-.contacts-panel__list-checkbox:hover {
-  border-color: var(--accent);
-}
-
-.contacts-panel__list-checkbox--checked {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: white;
-}
-
-.contacts-panel__list-checkbox--partial {
-  background: var(--accent);
-  border-color: var(--accent);
-}
-
-.contacts-panel__list-checkbox--partial::before {
-  content: '';
-  width: 8px;
-  height: 2px;
-  background: white;
-  border-radius: 1px;
-}
 
 /* List Items */
 .contacts-panel__list-items {
@@ -752,66 +713,6 @@
   background: var(--accent-light);
 }
 
-/* List Columns */
-.contacts-panel__list-col {
-  display: flex;
-  align-items: center;
-  min-width: 0;
-}
-
-.contacts-panel__list-col--check {
-  justify-content: center;
-}
-
-.contacts-panel__list-col--name {
-  gap: 10px;
-}
-
-.contacts-panel__list-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: var(--accent);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 600;
-  font-size: 12px;
-  flex-shrink: 0;
-}
-
-.contacts-panel__list-name {
-  font-weight: 500;
-  color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.contacts-panel__list-col--company {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* Dark mode: ensure company name is visible */
-[data-theme="dark"] .contacts-panel__list-col--company {
-  color: var(--text-primary);
-}
-
-.contacts-panel__list-col--city {
-  font-size: 12px;
-  color: var(--text-muted);
-}
-
-.contacts-panel__list-col--city svg {
-  margin-right: 4px;
-  flex-shrink: 0;
-}
 
 /* Tag Badge */
 .contacts-panel__tag-badge {
@@ -831,44 +732,6 @@
 .contacts-panel__tag-badge--none {
   background: var(--text-muted);
   opacity: 0.5;
-}
-
-/* Status Badge */
-.contacts-panel__status-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
-  font-size: 11px;
-  font-weight: 500;
-  border-radius: 12px;
-  white-space: nowrap;
-}
-
-.contacts-panel__status-badge--overdue {
-  background: rgba(239, 68, 68, 0.15);
-  color: var(--danger);
-}
-
-.contacts-panel__status-badge--today {
-  background: rgba(245, 158, 11, 0.15);
-  color: #D97706;
-}
-
-.contacts-panel__status-badge--soon {
-  background: rgba(59, 130, 246, 0.15);
-  color: #2563EB;
-}
-
-.contacts-panel__status-badge--future {
-  background: var(--bg-column);
-  color: var(--text-muted);
-}
-
-.contacts-panel__status-badge--none {
-  background: var(--bg-column);
-  color: var(--text-muted);
-  font-style: italic;
 }
 
 /* List Actions */
@@ -1727,17 +1590,6 @@
   flex-direction: column;
 }
 
-.contacts-panel__form-body .form-group {
-  margin-bottom: 20px;
-}
-
-.contacts-panel__form-body .form-group .label {
-  margin-bottom: 8px;
-}
-
-.contacts-panel__form-body .form-row {
-  gap: 16px;
-}
 
 .contacts-panel__form-actions {
   display: flex;
@@ -1840,7 +1692,8 @@
     grid-template-columns: 1.5fr 1.2fr 100px 60px;
   }
 
-  .contacts-panel__col-city {
+  .contacts-panel__col-city,
+  .contacts-panel__list-header-cols span:nth-child(3) {
     display: none;
   }
 }
