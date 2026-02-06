@@ -3075,8 +3075,7 @@
 .contact-detail-modal__section-divider {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  gap: 12px;
   margin: 12px 0 6px;
   padding-bottom: 6px;
   border-bottom: 1px solid var(--border);

@@ -377,13 +377,13 @@ router.get('/reports/statistics', (req, res) => {
     SELECT COUNT(*) as count FROM contacts WHERE is_robot = 1
   `).get();
 
-  // Total revenue (valor_implementacao + valor_mensal)
+  // Total revenue (valor_implementacao + valor_mensal) - de todos os contatos com valores
   const revenue = db.prepare(`
     SELECT
       SUM(valor_implementacao) as total_implementacao,
       SUM(valor_mensal) as total_mensal
     FROM contacts
-    WHERE tag = 'cliente'
+    WHERE valor_implementacao > 0 OR valor_mensal > 0
   `).get();
 
   // Contacts by tag (funnel)
