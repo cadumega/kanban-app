@@ -448,9 +448,34 @@ Painel principal do CRM com:
 - Alternância entre visualização Lista e Kanban
 - Filtros avançados (busca, cidade, tag, follow-up, ordenação)
 - Seleção múltipla com checkbox para ações em lote
-- Formulário de edição com campo cidade (sugestões automáticas)
+- Formulário inline para criar novo contato (com campo cidade e sugestões)
+- Botões de Importar/Exportar CSV no header
+- Clique único no contato abre modal de detalhes
+
+**Observação:** O painel lateral de detalhes foi removido em favor do modal expandido, resultando em uma UI mais limpa e focada.
+
+### ContactDetailModal.tsx
+Modal expandido para detalhes do contato:
+- Layout em duas colunas (Follow-ups à esquerda, Notas à direita)
+- Edição completa de todos os campos do contato
 - Histórico de notas com upload de imagens
-- Gerenciamento de follow-ups por contato
+- **Campo de data nas notas** - Permite escolher a data da nota (útil para registrar interações passadas)
+- Gerenciamento de follow-ups (criar, reagendar, concluir)
+- **Follow-ups formatados** - Exibe "Retornar em dd/mm/yyyy" para clareza
+- Exclusão do contato com confirmação
+- Aberto via clique único no contato (lista ou kanban)
+
+### ContactImportExport.tsx
+Funcionalidades de importação e exportação:
+- **ImportModal**: Modal para upload de CSV
+  - Detecção automática de colunas (nome, email, telefone, etc.)
+  - Mapeamento inteligente (aceita variações como "Nome Completo", "name")
+  - Preview dos dados antes de importar
+  - Remoção de linhas individuais no preview
+  - Barra de progresso durante importação
+- **exportContactsToCSV**: Função para exportar contatos
+  - Gera CSV compatível com Excel (UTF-8 com BOM)
+  - Exporta todos ou apenas filtrados
 
 ### FollowupsPanel.tsx
 Painel de follow-ups pendentes com:
@@ -519,6 +544,106 @@ const {
 [Frontend]
     ↑ Atualiza UI
 ```
+
+---
+
+## Troubleshooting
+
+### Tela branca após build local
+**Problema:** Após rodar `npm run build` no frontend, ao acessar `http://localhost:3001` a tela fica branca.
+
+**Causa:** O backend só serve arquivos estáticos quando `NODE_ENV=production`. Sem essa variável, o servidor não serve o HTML/JS/CSS do build.
+
+**Solução:**
+```bash
+cd backend
+NODE_ENV=production node src/index.js
+```
+
+### Porta já em uso (EADDRINUSE)
+**Problema:** Erro `EADDRINUSE: address already in use :::3001`
+
+**Causa:** Outro processo está usando a porta 3001.
+
+**Solução:**
+```bash
+# Descobrir e matar o processo
+lsof -ti:3001 | xargs kill -9
+```
+
+### Modal fecha painel CRM inteiro
+**Problema:** Clicar fora do modal de detalhes ou importação fecha o painel CRM inteiro.
+
+**Causa:** O evento de clique propaga do overlay do modal para o overlay do painel CRM.
+
+**Solução:** Usar `e.stopPropagation()` no onClick do overlay do modal:
+```tsx
+<div className="modal-overlay" onClick={(e) => { e.stopPropagation(); onClose(); }}>
+```
+
+### Arquivos de imagem não carregam
+**Problema:** Imagens de notas não aparecem.
+
+**Causa:** O caminho da API de imagens pode estar incorreto.
+
+**Solução:** Verificar se a rota `/api/contacts/images/:path` está configurada corretamente no backend e se as imagens estão sendo salvas em `data/{email}/images/`.
+
+---
+
+## Padrões CSS Importantes
+
+### background vs background-color
+Ao estilizar elementos `<select>` nativos, usar `background:` (shorthand) sobrescreve a seta nativa do dropdown, pois reseta `background-image`.
+
+```css
+/* Errado - remove a seta nativa */
+select:hover {
+  background: var(--bg-hover);
+}
+
+/* Correto - preserva a seta nativa */
+select:hover {
+  background-color: var(--bg-hover);
+}
+```
+
+### stopPropagation em Modais
+Modais com overlay precisam de `e.stopPropagation()` no container interno para evitar que cliques dentro do modal fechem o painel pai.
+
+```tsx
+<div className="overlay" onClick={onClose}>
+  <div className="modal" onClick={e => e.stopPropagation()}>
+    {/* conteúdo */}
+  </div>
+</div>
+```
+
+### NODE_ENV para Arquivos Estáticos
+O Express só serve arquivos estáticos do frontend quando `NODE_ENV=production`. Sem isso, acessar `localhost:3001` resulta em tela branca.
+
+```bash
+# Correto
+NODE_ENV=production node src/index.js
+
+# Errado (tela branca)
+node src/index.js
+```
+
+---
+
+## Histórico de Refatorações
+
+### Fevereiro 2026 - Remoção do Painel Lateral do CRM
+
+**Antes:** O CRM tinha um painel lateral (sidebar) que abria ao clicar em um contato, mostrando detalhes, notas e follow-ups.
+
+**Depois:** O painel lateral foi removido. Agora um clique único no contato abre diretamente o modal expandido (`ContactDetailModal`).
+
+**Arquivos alterados:**
+- `ContactsPanel.tsx` - Removido estado `selectedContact`, substituído por `detailContact`
+- `ContactsPanel.css` - Classe `.contacts-panel__detail` marcada como deprecated, criada `.contacts-panel__new-form-container` para o formulário de novo contato
+
+**Motivação:** UI mais limpa e consistente. O modal oferece mais espaço e melhor organização (duas colunas) do que o painel lateral.
 
 ---
 

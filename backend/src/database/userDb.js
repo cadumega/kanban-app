@@ -82,12 +82,32 @@ function migrateUserDb(db) {
     console.log('Migration: Added focus column to tasks');
   }
 
+  // Check if completed_at column exists in tasks
+  const tasksInfoCompleted = db.prepare("PRAGMA table_info(tasks)").all();
+  const hasCompletedAt = tasksInfoCompleted.some(col => col.name === 'completed_at');
+  if (!hasCompletedAt) {
+    db.exec('ALTER TABLE tasks ADD COLUMN completed_at DATETIME');
+    console.log('Migration: Added completed_at column to tasks');
+  }
+
   // Check if city column exists in contacts
   const contactsInfoCity = db.prepare("PRAGMA table_info(contacts)").all();
   const hasCity = contactsInfoCity.some(col => col.name === 'city');
   if (!hasCity) {
     db.exec('ALTER TABLE contacts ADD COLUMN city TEXT DEFAULT NULL');
     console.log('Migration: Added city column to contacts');
+  }
+
+  // Check if new contact fields exist (phone_robot, whatsapp_redirect, valores, is_robot)
+  const contactsInfoNew = db.prepare("PRAGMA table_info(contacts)").all();
+  const hasPhoneRobot = contactsInfoNew.some(col => col.name === 'phone_robot');
+  if (!hasPhoneRobot) {
+    db.exec('ALTER TABLE contacts ADD COLUMN phone_robot TEXT');
+    db.exec('ALTER TABLE contacts ADD COLUMN whatsapp_redirect TEXT');
+    db.exec('ALTER TABLE contacts ADD COLUMN valor_implementacao REAL DEFAULT 0');
+    db.exec('ALTER TABLE contacts ADD COLUMN valor_mensal REAL DEFAULT 0');
+    db.exec('ALTER TABLE contacts ADD COLUMN is_robot INTEGER DEFAULT 0');
+    console.log('Migration: Added phone_robot, whatsapp_redirect, valor_implementacao, valor_mensal, is_robot columns to contacts');
   }
 
   // Check if contact_followups table exists
@@ -160,6 +180,7 @@ function initializeUserDb(db) {
       blocked_by TEXT,
       blocked_reason TEXT,
       focus INTEGER DEFAULT 0,
+      completed_at DATETIME,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (column_id) REFERENCES columns(id) ON DELETE CASCADE,
@@ -176,10 +197,15 @@ function initializeUserDb(db) {
       name TEXT NOT NULL,
       email TEXT,
       phone TEXT,
+      phone_robot TEXT,
+      whatsapp_redirect TEXT,
       company TEXT,
       role TEXT,
       tag TEXT DEFAULT NULL,
       city TEXT DEFAULT NULL,
+      valor_implementacao REAL DEFAULT 0,
+      valor_mensal REAL DEFAULT 0,
+      is_robot INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );

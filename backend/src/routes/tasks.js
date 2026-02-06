@@ -187,6 +187,13 @@ router.put('/:id/move', (req, res) => {
 
     const targetColumnId = column_id || existing.column_id;
 
+    // Check if target column is "Concluído" to set completed_at
+    const targetColumn = db.prepare('SELECT title FROM columns WHERE id = ?').get(targetColumnId);
+    const isCompletedColumn = targetColumn && targetColumn.title.toLowerCase().includes('conclu');
+    const completedAt = isCompletedColumn && !existing.completed_at ? new Date().toISOString() : existing.completed_at;
+    // If moving out of completed column, clear completed_at
+    const finalCompletedAt = isCompletedColumn ? completedAt : null;
+
     // Update positions in target column
     const transaction = db.transaction(() => {
       // If moving to different column, shift positions in both columns
@@ -217,10 +224,10 @@ router.put('/:id/move', (req, res) => {
         }
       }
 
-      // Update the task itself
+      // Update the task itself (including completed_at)
       db.prepare(`
-        UPDATE tasks SET column_id = ?, position = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
-      `).run(targetColumnId, position, id);
+        UPDATE tasks SET column_id = ?, position = ?, completed_at = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+      `).run(targetColumnId, position, finalCompletedAt, id);
     });
 
     transaction();

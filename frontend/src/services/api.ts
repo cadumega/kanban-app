@@ -179,13 +179,16 @@ export const deleteContact = async (id: string): Promise<void> => {
   await api.delete(`/contacts/${id}`);
 };
 
-export const addContactNote = async (contactId: string, content: string, image?: File): Promise<ContactNote> => {
+export const addContactNote = async (contactId: string, content: string, image?: File, noteDate?: string): Promise<ContactNote> => {
   const formData = new FormData();
   if (content) {
     formData.append('content', content);
   }
   if (image) {
     formData.append('image', image);
+  }
+  if (noteDate) {
+    formData.append('note_date', noteDate);
   }
   const { data } = await api.post(`/contacts/${contactId}/notes`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
@@ -282,4 +285,10 @@ export const updateProject = async (id: string, updates: Partial<Project>): Prom
 
 export const deleteProject = async (id: string): Promise<void> => {
   await api.delete(`/projects/${id}`);
+};
+
+// Reports / Statistics
+export const getReportsStatistics = async () => {
+  const { data } = await api.get('/contacts/reports/statistics');
+  return data;
 };

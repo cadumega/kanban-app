@@ -27,6 +27,7 @@ export interface Task {
   blocked_by: string | null;
   blocked_reason: string | null;
   focus: number;
+  completed_at: string | null;
   checklist_total?: number;
   checklist_completed?: number;
   created_at: string;
@@ -87,10 +88,15 @@ export interface Contact {
   name: string;
   email: string | null;
   phone: string | null;
+  phone_robot: string | null;
+  whatsapp_redirect: string | null;
   company: string | null;
   role: string | null;
   tag: ContactTag;
   city: string | null;
+  valor_implementacao: number;
+  valor_mensal: number;
+  is_robot: number;
   notes_count?: number;
   notes?: ContactNote[];
   followups?: ContactFollowup[];

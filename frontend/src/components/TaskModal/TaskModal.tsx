@@ -137,6 +137,17 @@ export function TaskModal({
     }
   }, [task]);
 
+  // ESC key to close modal
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [onClose]);
+
   const loadChecklist = async (taskId: string) => {
     try {
       const items = await api.getChecklist(taskId);
@@ -271,23 +282,23 @@ export function TaskModal({
 
   return (
     <div className="modal-backdrop" onClick={handleClose}>
-      <div className="modal task-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal task-modal task-modal--large" onClick={(e) => e.stopPropagation()}>
         <form onSubmit={handleSubmit}>
-          <div className="modal-header">
+          <div className="modal-header task-modal__header">
             <h2>{task ? 'Editar Tarefa' : 'Nova Tarefa'}</h2>
             <div className="task-modal__header-actions">
               {task && (
                 <button
                   type="button"
                   onClick={handleDelete}
-                  className="btn btn-ghost btn-danger btn-sm"
+                  className="btn btn-ghost btn-danger"
                   title="Excluir tarefa"
                 >
-                  <Trash2 size={16} />
+                  <Trash2 size={18} />
                 </button>
               )}
-              <button type="submit" className="btn btn-primary btn-sm">
-                {task ? 'Salvar' : 'Criar'}
+              <button type="button" onClick={handleClose} className="btn btn-ghost" title="Fechar (ESC)">
+                <X size={20} />
               </button>
             </div>
           </div>
@@ -611,6 +622,14 @@ export function TaskModal({
             </div>
           </div>
 
+          <div className="modal-footer task-modal__footer">
+            <button type="button" onClick={handleClose} className="btn btn-secondary btn-lg">
+              Cancelar
+            </button>
+            <button type="submit" className="btn btn-primary btn-lg">
+              {task ? 'Salvar' : 'Criar'}
+            </button>
+          </div>
         </form>
       </div>
     </div>

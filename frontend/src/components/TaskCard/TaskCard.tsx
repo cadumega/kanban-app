@@ -5,7 +5,10 @@ import type { Task } from '../../types';
 import './TaskCard.css';
 
 // Calcula status do deadline baseado em start_date + pontos (pontos = dias)
-function getDeadlineStatus(startDate: string | null, points: number) {
+// Se a tarefa estiver concluída (completed_at preenchido), não mostra o contador
+function getDeadlineStatus(startDate: string | null, points: number, completedAt: string | null) {
+  // Se está concluída, não mostrar contador de deadline
+  if (completedAt) return null;
   if (!startDate || points <= 0) return null;
 
   const start = new Date(startDate);
@@ -76,7 +79,7 @@ export function TaskCard({ task, onClick, onToggleFocus }: TaskCardProps) {
     }).format(value);
   };
 
-  const deadlineStatus = getDeadlineStatus(task.start_date, task.points);
+  const deadlineStatus = getDeadlineStatus(task.start_date, task.points, task.completed_at);
 
   const handleToggleFocus = (e: React.MouseEvent) => {
     e.stopPropagation();

@@ -12,6 +12,51 @@ Sistema de gerenciamento de tarefas estilo Kanban com CRM integrado, follow-ups 
 
 ## Novidades Recentes
 
+### Fevereiro 2026 (Mais Recente)
+- **Painel de Relatórios CRM** - Dashboard com estatísticas completas
+  - Notas do mês, follow-ups concluídos, clientes com robô
+  - Receita (valor implementação + mensal) de clientes
+  - Top 10 contatos por interações
+  - Funil de vendas visual
+  - Distribuição por cidade
+  - Atividade recente
+- **Novos campos de Contato**:
+  - Telefone do Robô (para automação)
+  - Link de redirecionamento WhatsApp
+  - Valor Implementação (R$)
+  - Valor Mensal (R$)
+  - Checkbox "Tem Robô"
+- **Tecla ESC** - Fecha todos os modais (tarefas, contatos, importação, relatórios)
+- **Modal de Tarefas Melhorado**:
+  - Layout mais amplo e organizado
+  - Título e botão X na mesma linha
+  - Botões de ação com mais padding (Cancelar/Salvar)
+- **Bug fix: Contador de prazo** - O contador de deadline para quando a tarefa é movida para "Concluído"
+  - Campo `completed_at` preenchido automaticamente
+  - Não exibe mais barra de progresso em tarefas concluídas
+- **Modal de Contato Melhorado** - Campos de automação em seção separada com checkbox
+
+### Fevereiro 2026
+- **Importação de CSV** - Importe contatos de planilhas (Google Sheets/Excel)
+  - Detecção automática de colunas (nome, email, telefone, empresa, cargo, cidade, tag)
+  - Preview dos dados antes de importar
+  - Remoção de linhas individuais no preview
+  - Mapeamento inteligente de tags (lead, qualificado, proposta, etc.)
+- **Exportação de CSV** - Exporte contatos para planilhas
+  - Exporta todos ou apenas filtrados
+  - Compatível com Excel (UTF-8 com BOM)
+- **Modal Expandido de Contato** - Clique único abre modal com detalhes completos
+  - Layout em duas colunas (Follow-ups + Notas)
+  - Todas as funcionalidades disponíveis no modal
+  - Painel lateral removido em favor do modal (UI mais limpa)
+- **Campo de Data nas Notas** - Escolha a data da nota manualmente
+  - Útil para registrar interações passadas
+- **Follow-ups com Data Formatada** - Exibe "Retornar em dd/mm/yyyy"
+  - Mostra claramente quando retornar ao contato
+- **Coluna Telefone na Lista** - Visualize telefone direto na tabela de contatos
+- **Correção de bugs visuais** - Setas duplicadas nos dropdowns de filtro corrigidas
+
+### Anteriores
 - **Campo Cidade nos Contatos** - Registre a cidade de cada contato (com sugestões automáticas)
 - **Filtro por Cidade** - Filtre contatos e follow-ups por cidade
 - **Badges no Follow-up** - Cidade e etapa do funil visíveis em cada follow-up
@@ -72,15 +117,23 @@ Este é o usuário master que pode criar outros usuários.
 - Valor monetário (R$/mês)
 - Pontos de complexidade (1, 3, 5, 7)
 - Deadline automático (data início + pontos = dias)
-- Indicador visual de prazo
+- Indicador visual de prazo (para ao concluir tarefa)
+- Data de conclusão (`completed_at`) preenchida automaticamente
 - Bloqueio de tarefas
 - Filtros por pessoa, categoria, mês, projeto
 - Coluna Suporte com divisores
 - Dark Mode
 - Exportação CSV/JSON
+- **Tecla ESC** - Fecha modais de tarefas e contatos
 
 ### Mini CRM
 - Cadastro de contatos (nome, email, telefone, empresa, cargo, **cidade**)
+- **Campos de automação**:
+  - Telefone do Robô (número usado pela automação)
+  - Link de redirecionamento WhatsApp
+  - Valor Implementação (R$)
+  - Valor Mensal (R$)
+  - Checkbox "Tem Robô" para clientes com automação ativa
 - **Busca de contatos** - Filtre por palavra-chave (inclui cidade)
 - **Filtro por cidade** - Dropdown dinâmico na lista de contatos
 - **Tags de funil** - Lead, Qualificado, Proposta, Negociação, Cliente, Perdido
@@ -90,8 +143,20 @@ Este é o usuário master que pode criar outros usuários.
 - **Painel de Follow-ups** - Veja todos pendentes por urgência
   - Filtro por cidade com contador
   - Badges de cidade e etapa do funil em cada item
+- **Painel de Relatórios** - Dashboard com estatísticas do CRM
+  - Notas e follow-ups do mês
+  - Receita total (implementação + mensal)
+  - Top 10 contatos por interações
+  - Funil de vendas (contatos por etapa)
+  - Distribuição por cidade
+  - Atividade recente
 - Integração com WhatsApp (link direto)
 - Timeline de interações
+- **Importar CSV** - Importe contatos de planilhas
+  - Colunas aceitas: nome, email, telefone, empresa, cargo, cidade, tag
+  - Detecta automaticamente variações (ex: "Nome Completo", "name", "nome")
+- **Exportar CSV** - Exporte contatos para planilhas (compatível com Excel)
+- **Modal Expandido** - Clique no contato abre tela grande com todos os detalhes
 
 ### Business Roadmap
 - Timeline visual de projetos por período
@@ -145,11 +210,15 @@ Para detalhes de como fazer o deploy, veja: **[04-DEPLOY.md](./04-DEPLOY.md)**
 ## Comandos Úteis
 
 ```bash
-# Iniciar tudo (dev)
+# Iniciar tudo (dev com hot reload)
 ./iniciar.sh
 
 # Build para produção
 cd frontend && npm run build
+
+# Rodar build local (após npm run build)
+cd backend && NODE_ENV=production node src/index.js
+# Acessar em http://localhost:3001
 
 # Deploy do backend (Fly.io)
 cd backend && ~/.fly/bin/fly deploy
@@ -162,6 +231,7 @@ fly logs
 
 # Parar servidores locais
 pkill -f "node.*kanban"
+lsof -ti:3001 | xargs kill -9  # Força parar porta 3001
 ```
 
 ---
@@ -223,9 +293,57 @@ kanban-app/
 
 ---
 
+## Bugs Conhecidos e Soluções
+
+### Tela branca após build local
+**Problema:** Após rodar `npm run build`, ao acessar `http://localhost:3001` a tela fica branca.
+
+**Causa:** O servidor só serve arquivos estáticos quando `NODE_ENV=production`.
+
+**Solução:**
+```bash
+cd backend
+NODE_ENV=production node src/index.js
+```
+
+### Porta 3001 já em uso
+**Problema:** Erro `EADDRINUSE: address already in use :::3001`
+
+**Solução:**
+```bash
+lsof -ti:3001 | xargs kill -9
+```
+
+### Modal fecha o painel CRM inteiro
+**Problema:** Clicar fora do modal de detalhes ou importação fecha tudo.
+
+**Solução:** Usar `e.stopPropagation()` no onClick do overlay do modal para evitar propagação do evento.
+
+### Setas duplicadas nos dropdowns de filtro
+**Problema:** Os botões select nos filtros do CRM mostram múltiplas setas (ícones sobrepostos).
+
+**Causa:** Usar `background:` (shorthand CSS) sobrescreve todas as propriedades de background, incluindo `background-image` que é a seta nativa do select.
+
+**Solução:** Usar `background-color:` em vez de `background:` no CSS dos selects.
+
+```css
+/* Errado - sobrescreve a seta nativa */
+.contacts-panel__filter-select:hover {
+  background: var(--bg-hover);
+}
+
+/* Correto - preserva a seta nativa */
+.contacts-panel__filter-select:hover {
+  background-color: var(--bg-hover);
+}
+```
+
+---
+
 ## Links
 
 - **App Produção:** https://frontend-pi-black-47.vercel.app
 - **API Produção:** https://kanban-api-cadu.fly.dev
 - **GitHub:** https://github.com/cadumega/kanban-app
-- **App Local:** http://localhost:5173
+- **App Local (dev):** http://localhost:5173
+- **App Local (build):** http://localhost:3001
