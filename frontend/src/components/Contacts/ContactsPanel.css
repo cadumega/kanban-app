@@ -3035,6 +3035,9 @@
 /* Edit Form in Modal */
 .contact-detail-modal__edit {
   padding: 24px 32px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
 }
 
 .contact-detail-modal__edit-header {
