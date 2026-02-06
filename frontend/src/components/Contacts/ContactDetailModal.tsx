@@ -350,24 +350,34 @@ export function ContactDetailModal({
         ) : isEditing ? (
           /* Edit Form */
           <div className="contact-detail-modal__edit">
+            {/* Header fixo com título e botões */}
             <div className="contact-detail-modal__edit-header">
               <h3>Editar Contato</h3>
+              <div className="contact-detail-modal__edit-header-actions">
+                <button onClick={() => setIsEditing(false)} className="btn btn-secondary">
+                  Cancelar
+                </button>
+                <button onClick={handleSaveContact} className="btn btn-primary" disabled={!formData.name.trim()}>
+                  Salvar
+                </button>
+              </div>
             </div>
 
             <div className="contact-detail-modal__edit-body">
-              <div className="form-group">
-                <label className="label">Nome *</label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={e => setFormData({ ...formData, name: e.target.value })}
-                  className="input"
-                  placeholder="Nome do contato"
-                  autoFocus
-                />
-              </div>
-
+              {/* Nome e Email */}
               <div className="form-row">
+                <div className="form-group">
+                  <label className="label">Nome *</label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={e => setFormData({ ...formData, name: e.target.value })}
+                    className="input"
+                    placeholder="Nome do contato"
+                    autoFocus
+                  />
+                </div>
+
                 <div className="form-group">
                   <label className="label"><Mail size={14} /> Email</label>
                   <input
@@ -378,7 +388,10 @@ export function ContactDetailModal({
                     placeholder="email@exemplo.com"
                   />
                 </div>
+              </div>
 
+              {/* Telefone e Empresa */}
+              <div className="form-row">
                 <div className="form-group">
                   <label className="label"><Phone size={14} /> Telefone</label>
                   <input
@@ -389,9 +402,7 @@ export function ContactDetailModal({
                     placeholder="(11) 99999-9999"
                   />
                 </div>
-              </div>
 
-              <div className="form-row">
                 <div className="form-group">
                   <label className="label"><Building size={14} /> Empresa</label>
                   <input
@@ -402,7 +413,10 @@ export function ContactDetailModal({
                     placeholder="Nome da empresa"
                   />
                 </div>
+              </div>
 
+              {/* Cargo e Cidade */}
+              <div className="form-row">
                 <div className="form-group">
                   <label className="label"><Briefcase size={14} /> Cargo</label>
                   <input
@@ -413,22 +427,53 @@ export function ContactDetailModal({
                     placeholder="Cargo/Função"
                   />
                 </div>
+
+                <div className="form-group">
+                  <label className="label"><MapPin size={14} /> Cidade</label>
+                  <input
+                    type="text"
+                    value={formData.city}
+                    onChange={e => setFormData({ ...formData, city: e.target.value })}
+                    className="input"
+                    placeholder="Cidade"
+                  />
+                </div>
               </div>
 
+              {/* Etapa do Funil */}
               <div className="form-group">
-                <label className="label"><MapPin size={14} /> Cidade</label>
-                <input
-                  type="text"
-                  value={formData.city}
-                  onChange={e => setFormData({ ...formData, city: e.target.value })}
-                  className="input"
-                  placeholder="Cidade"
-                />
+                <label className="label">Etapa do Funil</label>
+                <div className="contact-detail-modal__tag-selector">
+                  {TAG_OPTIONS.map(option => (
+                    <button
+                      key={option.value || 'none'}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, tag: option.value })}
+                      className={`contact-detail-modal__tag-option ${formData.tag === option.value ? 'contact-detail-modal__tag-option--active' : ''}`}
+                      style={{
+                        '--tag-color': option.color,
+                        borderColor: formData.tag === option.value ? option.color : undefined,
+                        background: formData.tag === option.value ? `${option.color}15` : undefined,
+                      } as React.CSSProperties}
+                    >
+                      <span className="contact-detail-modal__tag-dot" style={{ background: option.color }} />
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Robô / Automação */}
               <div className="contact-detail-modal__section-divider">
                 <span><Bot size={14} /> Automação / Robô</span>
+                <label className="contact-detail-modal__checkbox-inline">
+                  <input
+                    type="checkbox"
+                    checked={formData.is_robot}
+                    onChange={e => setFormData({ ...formData, is_robot: e.target.checked })}
+                  />
+                  <span>Ativo</span>
+                </label>
               </div>
 
               <div className="form-row">
@@ -456,18 +501,6 @@ export function ContactDetailModal({
                     placeholder="https://wa.me/..."
                   />
                 </div>
-              </div>
-
-              <div className="form-group">
-                <label className="contact-detail-modal__checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={formData.is_robot}
-                    onChange={e => setFormData({ ...formData, is_robot: e.target.checked })}
-                  />
-                  <Bot size={16} />
-                  <span>Cliente com Robô/Automação ativo</span>
-                </label>
               </div>
 
               {/* Valores */}
@@ -502,37 +535,6 @@ export function ContactDetailModal({
                   />
                 </div>
               </div>
-
-              <div className="form-group">
-                <label className="label">Etapa do Funil</label>
-                <div className="contact-detail-modal__tag-selector">
-                  {TAG_OPTIONS.map(option => (
-                    <button
-                      key={option.value || 'none'}
-                      type="button"
-                      onClick={() => setFormData({ ...formData, tag: option.value })}
-                      className={`contact-detail-modal__tag-option ${formData.tag === option.value ? 'contact-detail-modal__tag-option--active' : ''}`}
-                      style={{
-                        '--tag-color': option.color,
-                        borderColor: formData.tag === option.value ? option.color : undefined,
-                        background: formData.tag === option.value ? `${option.color}15` : undefined,
-                      } as React.CSSProperties}
-                    >
-                      <span className="contact-detail-modal__tag-dot" style={{ background: option.color }} />
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="contact-detail-modal__edit-actions">
-              <button onClick={() => setIsEditing(false)} className="btn btn-secondary btn-lg">
-                Cancelar
-              </button>
-              <button onClick={handleSaveContact} className="btn btn-primary btn-lg" disabled={!formData.name.trim()}>
-                Salvar
-              </button>
             </div>
           </div>
         ) : (

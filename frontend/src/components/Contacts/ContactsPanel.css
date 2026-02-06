@@ -3034,14 +3034,21 @@
 
 /* Edit Form in Modal */
 .contact-detail-modal__edit {
-  padding: 24px 32px;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
   flex: 1;
   min-height: 0;
+  overflow: hidden;
 }
 
 .contact-detail-modal__edit-header {
-  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-secondary);
+  flex-shrink: 0;
 }
 
 .contact-detail-modal__edit-header h3 {
@@ -3051,32 +3058,27 @@
   margin: 0;
 }
 
+.contact-detail-modal__edit-header-actions {
+  display: flex;
+  gap: 8px;
+}
+
 .contact-detail-modal__edit-body {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-}
-
-.contact-detail-modal__edit-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  margin-top: 24px;
-  padding-top: 20px;
-  border-top: 1px solid var(--border);
-}
-
-.contact-detail-modal__edit-actions .btn-lg {
-  padding: 10px 24px;
-  font-size: 14px;
+  gap: 14px;
+  padding: 20px 24px;
+  overflow-y: auto;
+  flex: 1;
 }
 
 .contact-detail-modal__section-divider {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
-  margin: 16px 0 8px;
-  padding-bottom: 8px;
+  margin: 12px 0 6px;
+  padding-bottom: 6px;
   border-bottom: 1px solid var(--border);
   color: var(--text-secondary);
   font-size: 12px;
@@ -3089,6 +3091,32 @@
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.contact-detail-modal__checkbox-inline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: none;
+  color: var(--text-primary);
+  padding: 4px 10px;
+  border-radius: var(--radius);
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  transition: all var(--transition-fast);
+}
+
+.contact-detail-modal__checkbox-inline:hover {
+  border-color: var(--accent);
+}
+
+.contact-detail-modal__checkbox-inline input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
 }
 
 .contact-detail-modal__checkbox-label {
