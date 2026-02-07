@@ -24,12 +24,14 @@ import {
   Trash2,
   MessageSquare,
   BarChart3,
+  CalendarDays,
 } from 'lucide-react';
 import type { Contact, ContactFollowup, ContactTag } from '../../types';
 import * as api from '../../services/api';
 import { ImportModal, exportContactsToCSV } from './ContactImportExport';
 import { ContactDetailModal } from './ContactDetailModal';
 import { ReportsPanel } from './ReportsPanel';
+import { FollowupsPanel } from './FollowupsPanel';
 import './ContactsPanel.css';
 
 interface ContactsPanelProps {
@@ -112,6 +114,7 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [detailContact, setDetailContact] = useState<Contact | null>(null);
   const [showReportsPanel, setShowReportsPanel] = useState(false);
+  const [showFollowupsPanel, setShowFollowupsPanel] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -128,13 +131,13 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
   // ESC key to close panel (only if no modal is open)
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen && !showImportModal && !showDetailModal && !showReportsPanel && !isEditing) {
+      if (e.key === 'Escape' && isOpen && !showImportModal && !showDetailModal && !showReportsPanel && !showFollowupsPanel && !isEditing) {
         onClose();
       }
     };
     window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
-  }, [isOpen, showImportModal, showDetailModal, showReportsPanel, isEditing, onClose]);
+  }, [isOpen, showImportModal, showDetailModal, showReportsPanel, showFollowupsPanel, isEditing, onClose]);
 
   const loadContacts = async () => {
     setLoading(true);
@@ -526,6 +529,10 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
           </div>
 
           <div className="contacts-panel__header-right">
+            <button onClick={() => setShowFollowupsPanel(true)} className="btn btn-secondary" title="Calendário de Follow-ups">
+              <CalendarDays size={16} />
+              Calendário
+            </button>
             <button onClick={() => setShowReportsPanel(true)} className="btn btn-secondary" title="Relatórios">
               <BarChart3 size={16} />
               Relatórios
@@ -979,6 +986,20 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
       <ReportsPanel
         isOpen={showReportsPanel}
         onClose={() => setShowReportsPanel(false)}
+      />
+
+      {/* Follow-ups Calendar Panel */}
+      <FollowupsPanel
+        isOpen={showFollowupsPanel}
+        onClose={() => setShowFollowupsPanel(false)}
+        onOpenContact={(contactId) => {
+          const contact = contacts.find(c => c.id === contactId);
+          if (contact) {
+            setDetailContact(contact);
+            setShowDetailModal(true);
+            setShowFollowupsPanel(false);
+          }
+        }}
       />
     </div>
   );
