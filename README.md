@@ -13,9 +13,14 @@ Sistema de gerenciamento de tarefas estilo Kanban com CRM integrado, follow-ups 
 ## Novidades Recentes
 
 ### Fevereiro 2026 (Mais Recente)
+- **Sidebar recolhida por padrão** - Mais espaço para o board, expanda clicando no ícone
+- **Calendário de Follow-ups no CRM** - Botão "Calendário" no header do CRM
+  - Visualização mensal dos follow-ups agendados
+  - Clique no dia para ver detalhes
+  - Acesso rápido ao contato pelo calendário
 - **Painel de Relatórios CRM** - Dashboard com estatísticas completas
   - Notas do mês, follow-ups concluídos, clientes com robô
-  - Receita (valor implementação + mensal) de clientes
+  - Receita (valor implementação + mensal) de todos os contatos com valores
   - Top 10 contatos por interações
   - Funil de vendas visual
   - Distribuição por cidade
@@ -25,16 +30,21 @@ Sistema de gerenciamento de tarefas estilo Kanban com CRM integrado, follow-ups 
   - Link de redirecionamento WhatsApp
   - Valor Implementação (R$)
   - Valor Mensal (R$)
-  - Checkbox "Tem Robô"
-- **Tecla ESC** - Fecha todos os modais (tarefas, contatos, importação, relatórios)
+  - Checkbox "Tem Robô" (ao lado do título da seção)
+- **Tecla ESC** - Fecha todos os modais (tarefas, contatos, importação, relatórios, calendário)
 - **Modal de Tarefas Melhorado**:
   - Layout mais amplo e organizado
   - Título e botão X na mesma linha
   - Botões de ação com mais padding (Cancelar/Salvar)
+- **Modal de Contato Melhorado**:
+  - Botões Cancelar/Salvar fixos no topo (ao lado do título)
+  - Campos em duas colunas (mais compacto)
+  - Seção de automação com checkbox inline
+  - Scroll no formulário quando necessário
 - **Bug fix: Contador de prazo** - O contador de deadline para quando a tarefa é movida para "Concluído"
   - Campo `completed_at` preenchido automaticamente
   - Não exibe mais barra de progresso em tarefas concluídas
-- **Modal de Contato Melhorado** - Campos de automação em seção separada com checkbox
+- **Interface mais limpa** - Removido botão "Nova Coluna" do header (use menu da última coluna)
 
 ### Fevereiro 2026
 - **Importação de CSV** - Importe contatos de planilhas (Google Sheets/Excel)
@@ -143,6 +153,8 @@ Este é o usuário master que pode criar outros usuários.
 - **Painel de Follow-ups** - Veja todos pendentes por urgência
   - Filtro por cidade com contador
   - Badges de cidade e etapa do funil em cada item
+  - **Visualização em Calendário** - Veja follow-ups no mês inteiro
+- **Calendário no CRM** - Acesso rápido ao calendário de follow-ups pelo header
 - **Painel de Relatórios** - Dashboard com estatísticas do CRM
   - Notas e follow-ups do mês
   - Receita total (implementação + mensal)
