@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Loader2, RefreshCw, Plus, PanelLeft, Users, FolderKanban, Settings, LogOut, Bell, LayoutDashboard, TrendingUp } from 'lucide-react';
+import { Loader2, RefreshCw, PanelLeft, Users, FolderKanban, Settings, LogOut, Bell, LayoutDashboard, TrendingUp } from 'lucide-react';
 import { Board } from './components/Board/Board';
 import { Sidebar } from './components/Sidebar/Sidebar';
 import { TaskModal } from './components/TaskModal/TaskModal';
@@ -367,10 +367,6 @@ function AuthenticatedApp({ user, onLogout }: { user: User; onLogout: () => void
               )}
               <button onClick={refresh} className="btn btn-ghost" title="Atualizar">
                 <RefreshCw size={16} />
-              </button>
-              <button onClick={handleAddColumn} className="btn btn-primary">
-                <Plus size={16} />
-                Nova Coluna
               </button>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 8, paddingLeft: 12, borderLeft: '1px solid var(--border)' }}>
                 <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{user.name || user.email}</span>
