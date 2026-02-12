@@ -21,8 +21,16 @@ import {
   Link,
   DollarSign,
 } from 'lucide-react';
-import type { Contact, ContactFollowup, ContactTag } from '../../types';
+import type { Contact, ContactFollowup, ContactTag, ContactSegment } from '../../types';
 import * as api from '../../services/api';
+
+// Segment options for projects
+const SEGMENT_OPTIONS: { value: ContactSegment; label: string; color: string }[] = [
+  { value: 'n8n', label: 'N8N', color: '#EA4B71' },
+  { value: 'chapeu', label: 'Chapéu', color: '#8B5CF6' },
+  { value: 'parceria', label: 'Parceria', color: '#22C55E' },
+  { value: 'consultoria', label: 'Consultoria', color: '#F59E0B' },
+];
 
 interface ContactDetailModalProps {
   contact: Contact | null;
@@ -65,6 +73,10 @@ export function ContactDetailModal({
   const [followupDate, setFollowupDate] = useState('');
   const [followupDescription, setFollowupDescription] = useState('');
 
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [editNoteContent, setEditNoteContent] = useState('');
+  const [savingNote, setSavingNote] = useState(false);
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -75,6 +87,7 @@ export function ContactDetailModal({
     role: '',
     tag: null as ContactTag,
     city: '',
+    segments: [] as ContactSegment[],
     valor_implementacao: 0,
     valor_mensal: 0,
     is_robot: false,
@@ -120,6 +133,10 @@ export function ContactDetailModal({
 
   const handleEditContact = () => {
     if (contactData) {
+      // Parse segments from comma-separated string
+      const segmentsArray = contactData.segments
+        ? (contactData.segments.split(',').filter(Boolean) as ContactSegment[])
+        : [];
       setFormData({
         name: contactData.name,
         email: contactData.email || '',
@@ -130,6 +147,7 @@ export function ContactDetailModal({
         role: contactData.role || '',
         tag: contactData.tag,
         city: contactData.city || '',
+        segments: segmentsArray,
         valor_implementacao: contactData.valor_implementacao || 0,
         valor_mensal: contactData.valor_mensal || 0,
         is_robot: !!contactData.is_robot,
@@ -144,6 +162,7 @@ export function ContactDetailModal({
     try {
       const dataToSave = {
         ...formData,
+        segments: formData.segments.length > 0 ? formData.segments.join(',') : null, // Convert array to comma-separated string
         is_robot: formData.is_robot ? 1 : 0, // Convert boolean to number for API
       };
       const updated = await api.updateContact(contactData.id, dataToSave);
@@ -220,6 +239,35 @@ export function ContactDetailModal({
       });
     } catch (err) {
       console.error('Erro ao excluir nota:', err);
+    }
+  };
+
+  const handleStartEditNote = (note: { id: string; content: string | null }) => {
+    setEditingNoteId(note.id);
+    setEditNoteContent(note.content || '');
+  };
+
+  const handleCancelEditNote = () => {
+    setEditingNoteId(null);
+    setEditNoteContent('');
+  };
+
+  const handleUpdateNote = async () => {
+    if (!contactData || !editingNoteId) return;
+
+    setSavingNote(true);
+    try {
+      const updatedNote = await api.updateContactNote(contactData.id, editingNoteId, editNoteContent);
+      setContactData({
+        ...contactData,
+        notes: contactData.notes?.map(n => (n.id === editingNoteId ? { ...n, content: updatedNote.content } : n)),
+      });
+      setEditingNoteId(null);
+      setEditNoteContent('');
+    } catch (err) {
+      console.error('Erro ao atualizar nota:', err);
+    } finally {
+      setSavingNote(false);
     }
   };
 
@@ -463,6 +511,40 @@ export function ContactDetailModal({
                 </div>
               </div>
 
+              {/* Segmentos / Projetos */}
+              <div className="form-group">
+                <label className="label">Segmentos / Projetos</label>
+                <div className="contact-detail-modal__segments-selector">
+                  {SEGMENT_OPTIONS.map(option => {
+                    const isSelected = formData.segments.includes(option.value);
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => {
+                          setFormData(prev => ({
+                            ...prev,
+                            segments: isSelected
+                              ? prev.segments.filter(s => s !== option.value)
+                              : [...prev.segments, option.value]
+                          }));
+                        }}
+                        className={`contact-detail-modal__segment-option ${isSelected ? 'contact-detail-modal__segment-option--active' : ''}`}
+                        style={{
+                          '--segment-color': option.color,
+                          borderColor: isSelected ? option.color : undefined,
+                          background: isSelected ? `${option.color}20` : undefined,
+                        } as React.CSSProperties}
+                      >
+                        <span className="contact-detail-modal__segment-dot" style={{ background: option.color }} />
+                        {option.label}
+                        {isSelected && <Check size={12} />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               {/* Robô / Automação */}
               <div className="contact-detail-modal__section-divider">
                 <span><Bot size={14} /> Automação / Robô</span>
@@ -631,6 +713,25 @@ export function ContactDetailModal({
               )}
             </div>
 
+            {/* Segments display */}
+            {contactData.segments && (
+              <div className="contact-detail-modal__segments-display">
+                {contactData.segments.split(',').filter(Boolean).map(seg => {
+                  const segInfo = SEGMENT_OPTIONS.find(s => s.value === seg);
+                  if (!segInfo) return null;
+                  return (
+                    <span
+                      key={seg}
+                      className="contact-detail-modal__segment-badge"
+                      style={{ background: `${segInfo.color}20`, color: segInfo.color, borderColor: segInfo.color }}
+                    >
+                      {segInfo.label}
+                    </span>
+                  );
+                })}
+              </div>
+            )}
+
             {/* Two Column Layout */}
             <div className="contact-detail-modal__columns">
               {/* Left: Follow-ups */}
@@ -754,11 +855,36 @@ export function ContactDetailModal({
                       <div key={note.id} className="contact-detail-modal__note">
                         <div className="contact-detail-modal__note-header">
                           <span className="contact-detail-modal__note-date">{formatDate(note.created_at)}</span>
-                          <button onClick={() => handleDeleteNote(note.id)} className="contact-detail-modal__note-delete">
-                            <X size={12} />
-                          </button>
+                          <div className="contact-detail-modal__note-actions">
+                            {note.content && (
+                              <button onClick={() => handleStartEditNote(note)} className="contact-detail-modal__note-edit" title="Editar">
+                                <Edit3 size={12} />
+                              </button>
+                            )}
+                            <button onClick={() => handleDeleteNote(note.id)} className="contact-detail-modal__note-delete" title="Excluir">
+                              <X size={12} />
+                            </button>
+                          </div>
                         </div>
-                        {note.content && <p className="contact-detail-modal__note-content">{note.content}</p>}
+                        {editingNoteId === note.id ? (
+                          <div className="contact-detail-modal__note-edit-form">
+                            <textarea
+                              value={editNoteContent}
+                              onChange={e => setEditNoteContent(e.target.value)}
+                              className="input textarea"
+                              rows={3}
+                              autoFocus
+                            />
+                            <div className="contact-detail-modal__note-edit-actions">
+                              <button onClick={handleCancelEditNote} className="btn btn-ghost btn-xs">Cancelar</button>
+                              <button onClick={handleUpdateNote} disabled={savingNote} className="btn btn-primary btn-xs">
+                                {savingNote ? <Loader2 size={12} className="spin" /> : 'Salvar'}
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          note.content && <p className="contact-detail-modal__note-content">{note.content}</p>
+                        )}
                         {note.image_path && (
                           <div className="contact-detail-modal__note-image">
                             <img

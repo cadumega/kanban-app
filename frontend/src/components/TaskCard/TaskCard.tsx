@@ -5,14 +5,30 @@ import type { Task } from '../../types';
 import './TaskCard.css';
 
 // Calcula status do deadline baseado em start_date + pontos (pontos = dias)
-// Se a tarefa estiver concluída (completed_at preenchido), não mostra o contador
 function getDeadlineStatus(startDate: string | null, points: number, completedAt: string | null) {
-  // Se está concluída, não mostrar contador de deadline
-  if (completedAt) return null;
   if (!startDate || points <= 0) return null;
 
   const start = new Date(startDate);
   start.setHours(0, 0, 0, 0);
+
+  // Se concluído, calcular baseado na data de conclusão
+  if (completedAt) {
+    const completed = new Date(completedAt);
+    completed.setHours(0, 0, 0, 0);
+    const totalDays = points;
+    const daysUsed = Math.ceil((completed.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    const daysRemaining = totalDays - daysUsed;
+    const progress = Math.min(Math.max((daysUsed / totalDays) * 100, 0), 100);
+
+    return {
+      status: daysRemaining >= 0 ? 'completed' : 'completed-late',
+      daysRemaining,
+      progress,
+      totalDays,
+      isCompleted: true,
+    };
+  }
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -34,7 +50,7 @@ function getDeadlineStatus(startDate: string | null, points: number, completedAt
     status = 'ok';
   }
 
-  return { status, daysRemaining, progress, totalDays };
+  return { status, daysRemaining, progress, totalDays, isCompleted: false };
 }
 
 interface TaskCardProps {
@@ -126,11 +142,15 @@ export function TaskCard({ task, onClick, onToggleFocus }: TaskCardProps) {
         {deadlineStatus && (
           <div
             className={`task-card__deadline task-card__deadline--${deadlineStatus.status}`}
-            title={deadlineStatus.daysRemaining < 0
-              ? `${Math.abs(deadlineStatus.daysRemaining)}d atrasado`
-              : deadlineStatus.daysRemaining === 0
-                ? 'Vence hoje!'
-                : `${deadlineStatus.daysRemaining}d restantes`}
+            title={deadlineStatus.isCompleted
+              ? (deadlineStatus.daysRemaining >= 0
+                ? `Concluído ${deadlineStatus.daysRemaining}d antes do prazo`
+                : `Concluído ${Math.abs(deadlineStatus.daysRemaining)}d após o prazo`)
+              : (deadlineStatus.daysRemaining < 0
+                ? `${Math.abs(deadlineStatus.daysRemaining)}d atrasado`
+                : deadlineStatus.daysRemaining === 0
+                  ? 'Vence hoje!'
+                  : `${deadlineStatus.daysRemaining}d restantes`)}
           >
             <div className="task-card__deadline-bar">
               <div
@@ -139,9 +159,11 @@ export function TaskCard({ task, onClick, onToggleFocus }: TaskCardProps) {
               />
             </div>
             <span className="task-card__deadline-label">
-              {deadlineStatus.daysRemaining < 0
-                ? `+${Math.abs(deadlineStatus.daysRemaining)}`
-                : deadlineStatus.daysRemaining}
+              {deadlineStatus.isCompleted
+                ? '✓'
+                : (deadlineStatus.daysRemaining < 0
+                  ? `+${Math.abs(deadlineStatus.daysRemaining)}`
+                  : deadlineStatus.daysRemaining)}
             </span>
           </div>
         )}

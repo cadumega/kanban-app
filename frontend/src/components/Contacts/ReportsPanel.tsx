@@ -19,6 +19,16 @@ interface ReportsPanelProps {
   onClose: () => void;
 }
 
+interface RobotClient {
+  id: string;
+  name: string;
+  company: string | null;
+  city: string | null;
+  segments: string | null;
+  valor_implementacao: number;
+  valor_mensal: number;
+}
+
 interface ReportStats {
   month: {
     notes: number;
@@ -51,6 +61,7 @@ interface ReportStats {
     contact_name: string;
     contact_company: string | null;
   }[];
+  robot_clients: RobotClient[];
 }
 
 const TAG_COLORS: Record<string, string> = {
@@ -65,6 +76,7 @@ const TAG_COLORS: Record<string, string> = {
 export function ReportsPanel({ isOpen, onClose }: ReportsPanelProps) {
   const [stats, setStats] = useState<ReportStats | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showRobotClients, setShowRobotClients] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -156,7 +168,11 @@ export function ReportsPanel({ isOpen, onClose }: ReportsPanelProps) {
                 </div>
               </div>
 
-              <div className="reports-panel__card">
+              <div
+                className="reports-panel__card reports-panel__card--clickable"
+                onClick={() => setShowRobotClients(!showRobotClients)}
+                title="Clique para ver lista"
+              >
                 <div className="reports-panel__card-icon reports-panel__card-icon--purple">
                   <Bot size={20} />
                 </div>
@@ -176,6 +192,35 @@ export function ReportsPanel({ isOpen, onClose }: ReportsPanelProps) {
                 </div>
               </div>
             </div>
+
+            {/* Robot Clients List */}
+            {showRobotClients && stats.robot_clients && stats.robot_clients.length > 0 && (
+              <div className="reports-panel__section reports-panel__section--highlight">
+                <h3><Bot size={16} /> Clientes com Robô ({stats.robot_clients.length})</h3>
+                <div className="reports-panel__robot-list">
+                  {stats.robot_clients.map(client => (
+                    <div key={client.id} className="reports-panel__robot-item">
+                      <div className="reports-panel__robot-info">
+                        <span className="reports-panel__robot-name">{client.name}</span>
+                        {client.company && (
+                          <span className="reports-panel__robot-company">{client.company}</span>
+                        )}
+                        {client.city && (
+                          <span className="reports-panel__robot-city"><MapPin size={10} /> {client.city}</span>
+                        )}
+                      </div>
+                      <div className="reports-panel__robot-values">
+                        {client.valor_mensal > 0 && (
+                          <span className="reports-panel__robot-mensal">
+                            {formatCurrency(client.valor_mensal)}/mês
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Revenue Details */}
             <div className="reports-panel__section">

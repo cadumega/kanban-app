@@ -110,6 +110,45 @@ function migrateUserDb(db) {
     console.log('Migration: Added phone_robot, whatsapp_redirect, valor_implementacao, valor_mensal, is_robot columns to contacts');
   }
 
+  // Check if segments column exists in contacts
+  const contactsInfoSegments = db.prepare("PRAGMA table_info(contacts)").all();
+  const hasSegments = contactsInfoSegments.some(col => col.name === 'segments');
+  if (!hasSegments) {
+    db.exec('ALTER TABLE contacts ADD COLUMN segments TEXT DEFAULT NULL');
+    console.log('Migration: Added segments column to contacts');
+  }
+
+  // Check if boards table exists (new multi-board feature)
+  const boardsTable = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='boards'").get();
+  if (!boardsTable) {
+    // Create boards table
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS boards (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        position INTEGER NOT NULL DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Create default board
+    const defaultBoardId = uuidv4();
+    db.prepare('INSERT INTO boards (id, name, position) VALUES (?, ?, ?)').run(defaultBoardId, 'Principal', 0);
+
+    // Add board_id to columns
+    db.exec('ALTER TABLE columns ADD COLUMN board_id TEXT');
+    db.exec(`UPDATE columns SET board_id = '${defaultBoardId}'`);
+    db.exec('CREATE INDEX IF NOT EXISTS idx_columns_board ON columns(board_id)');
+
+    // Add board_id to tasks
+    db.exec('ALTER TABLE tasks ADD COLUMN board_id TEXT');
+    db.exec(`UPDATE tasks SET board_id = '${defaultBoardId}'`);
+    db.exec('CREATE INDEX IF NOT EXISTS idx_tasks_board ON tasks(board_id)');
+
+    console.log('Migration: Created boards table and migrated existing data');
+  }
+
   // Check if contact_followups table exists
   const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='contact_followups'").get();
   if (!tables) {
@@ -131,6 +170,25 @@ function migrateUserDb(db) {
     `);
     console.log('Migration: Created contact_followups table');
   }
+
+  // Check if contact_tag_history table exists (for pipeline velocity tracking)
+  const tagHistoryTable = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='contact_tag_history'").get();
+  if (!tagHistoryTable) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS contact_tag_history (
+        id TEXT PRIMARY KEY,
+        contact_id TEXT NOT NULL,
+        old_tag TEXT,
+        new_tag TEXT,
+        changed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_contact_tag_history_contact ON contact_tag_history(contact_id);
+      CREATE INDEX IF NOT EXISTS idx_contact_tag_history_date ON contact_tag_history(changed_at);
+    `);
+    console.log('Migration: Created contact_tag_history table');
+  }
 }
 
 // Get user directory path
@@ -147,13 +205,25 @@ function getUserImagesDir(userEmail) {
 // Initialize user database with default schema
 function initializeUserDb(db) {
   db.exec(`
+    CREATE TABLE IF NOT EXISTS boards (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      position INTEGER NOT NULL DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
     CREATE TABLE IF NOT EXISTS columns (
       id TEXT PRIMARY KEY,
+      board_id TEXT NOT NULL,
       title TEXT NOT NULL,
       position INTEGER NOT NULL,
       color TEXT DEFAULT '#6366F1',
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (board_id) REFERENCES boards(id) ON DELETE CASCADE
     );
+
+    CREATE INDEX IF NOT EXISTS idx_columns_board ON columns(board_id);
 
     CREATE TABLE IF NOT EXISTS categories (
       id TEXT PRIMARY KEY,
@@ -163,6 +233,7 @@ function initializeUserDb(db) {
 
     CREATE TABLE IF NOT EXISTS tasks (
       id TEXT PRIMARY KEY,
+      board_id TEXT NOT NULL,
       title TEXT NOT NULL,
       description TEXT DEFAULT '',
       column_id TEXT NOT NULL,
@@ -183,10 +254,12 @@ function initializeUserDb(db) {
       completed_at DATETIME,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (board_id) REFERENCES boards(id) ON DELETE CASCADE,
       FOREIGN KEY (column_id) REFERENCES columns(id) ON DELETE CASCADE,
       FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
     );
 
+    CREATE INDEX IF NOT EXISTS idx_tasks_board ON tasks(board_id);
     CREATE INDEX IF NOT EXISTS idx_tasks_column ON tasks(column_id);
     CREATE INDEX IF NOT EXISTS idx_tasks_category ON tasks(category_id);
     CREATE INDEX IF NOT EXISTS idx_tasks_month ON tasks(month);
@@ -203,6 +276,7 @@ function initializeUserDb(db) {
       role TEXT,
       tag TEXT DEFAULT NULL,
       city TEXT DEFAULT NULL,
+      segments TEXT DEFAULT NULL,
       valor_implementacao REAL DEFAULT 0,
       valor_mensal REAL DEFAULT 0,
       is_robot INTEGER DEFAULT 0,
@@ -236,6 +310,18 @@ function initializeUserDb(db) {
     CREATE INDEX IF NOT EXISTS idx_contact_followups_date ON contact_followups(date);
     CREATE INDEX IF NOT EXISTS idx_contact_followups_completed ON contact_followups(completed);
 
+    CREATE TABLE IF NOT EXISTS contact_tag_history (
+      id TEXT PRIMARY KEY,
+      contact_id TEXT NOT NULL,
+      old_tag TEXT,
+      new_tag TEXT,
+      changed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_contact_tag_history_contact ON contact_tag_history(contact_id);
+    CREATE INDEX IF NOT EXISTS idx_contact_tag_history_date ON contact_tag_history(changed_at);
+
     CREATE TABLE IF NOT EXISTS task_checklist (
       id TEXT PRIMARY KEY,
       task_id TEXT NOT NULL,
@@ -263,6 +349,10 @@ function initializeUserDb(db) {
     CREATE INDEX IF NOT EXISTS idx_projects_status ON projects(status);
   `);
 
+  // Seed default board
+  const defaultBoardId = uuidv4();
+  db.prepare('INSERT INTO boards (id, name, position) VALUES (?, ?, ?)').run(defaultBoardId, 'Principal', 0);
+
   // Seed default columns
   const defaultColumns = [
     { title: 'Backlog', color: '#71717A' },
@@ -273,11 +363,11 @@ function initializeUserDb(db) {
   ];
 
   const insertColumn = db.prepare(
-    'INSERT INTO columns (id, title, position, color) VALUES (?, ?, ?, ?)'
+    'INSERT INTO columns (id, board_id, title, position, color) VALUES (?, ?, ?, ?, ?)'
   );
 
   defaultColumns.forEach((col, index) => {
-    insertColumn.run(uuidv4(), col.title, index, col.color);
+    insertColumn.run(uuidv4(), defaultBoardId, col.title, index, col.color);
   });
 
   // Seed default categories

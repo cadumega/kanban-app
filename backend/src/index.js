@@ -3,6 +3,7 @@ const cors = require('cors');
 const path = require('path');
 
 const authRouter = require('./routes/auth');
+const boardsRouter = require('./routes/boards');
 const columnsRouter = require('./routes/columns');
 const tasksRouter = require('./routes/tasks');
 const categoriesRouter = require('./routes/categories');
@@ -42,6 +43,7 @@ const injectUserDb = (req, res, next) => {
 };
 
 // Protected routes (require auth)
+app.use('/api/boards', authMiddleware, injectUserDb, boardsRouter);
 app.use('/api/columns', authMiddleware, injectUserDb, columnsRouter);
 app.use('/api/tasks', authMiddleware, injectUserDb, tasksRouter);
 app.use('/api/categories', authMiddleware, injectUserDb, categoriesRouter);

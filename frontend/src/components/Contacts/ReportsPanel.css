@@ -110,6 +110,16 @@
   margin-top: 2px;
 }
 
+.reports-panel__card--clickable {
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.reports-panel__card--clickable:hover {
+  border-color: #8B5CF6;
+  box-shadow: 0 0 0 1px #8B5CF6;
+}
+
 /* Sections */
 .reports-panel__section {
   background: var(--bg-primary);
@@ -130,6 +140,65 @@
 
 .reports-panel__section--full {
   grid-column: 1 / -1;
+}
+
+.reports-panel__section--highlight {
+  border-color: #8B5CF6;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.05) 0%, var(--bg-primary) 100%);
+}
+
+/* Robot Clients List */
+.reports-panel__robot-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+.reports-panel__robot-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: var(--bg-secondary);
+  border-radius: var(--radius);
+  border-left: 3px solid #8B5CF6;
+}
+
+.reports-panel__robot-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.reports-panel__robot-name {
+  font-weight: 500;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.reports-panel__robot-company {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.reports-panel__robot-city {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.reports-panel__robot-values {
+  text-align: right;
+}
+
+.reports-panel__robot-mensal {
+  font-size: 12px;
+  font-weight: 600;
+  color: #22C55E;
 }
 
 /* Columns Layout */

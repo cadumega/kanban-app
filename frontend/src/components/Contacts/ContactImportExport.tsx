@@ -11,7 +11,7 @@ import {
   ChevronRight,
   Trash2,
 } from 'lucide-react';
-import type { Contact, ContactTag } from '../../types';
+import type { Contact, ContactTag, ContactSegment } from '../../types';
 import * as api from '../../services/api';
 
 // ============================================
@@ -33,7 +33,11 @@ const COLUMN_MAPPINGS: Record<string, string[]> = {
   role: ['role', 'cargo', 'funcao', 'position', 'titulo', 'title', 'job'],
   city: ['city', 'cidade', 'localidade', 'location', 'local'],
   tag: ['tag', 'etapa', 'stage', 'status', 'funil', 'funnel', 'fase'],
+  segments: ['segments', 'segmentos', 'projetos', 'projects', 'segment', 'segmento'],
 };
+
+// Segmentos válidos
+const VALID_SEGMENTS: ContactSegment[] = ['n8n', 'chapeu', 'parceria', 'consultoria'];
 
 // Mapeamento de valores de tag
 const TAG_VALUE_MAPPINGS: Record<string, ContactTag> = {
@@ -60,8 +64,59 @@ interface ParsedRow {
   role: string;
   city: string;
   tag: ContactTag;
+  segments: string | null;
   isValid: boolean;
   errors: string[];
+  isDuplicate: boolean;
+  duplicateOf: Contact | null;
+  action: 'create' | 'update' | 'skip';
+}
+
+function parseSegments(value: string): string | null {
+  if (!value) return null;
+  const segments = value.split(/[,;|]/)
+    .map(s => s.toLowerCase().trim())
+    .filter(s => VALID_SEGMENTS.includes(s as ContactSegment));
+  return segments.length > 0 ? segments.join(',') : null;
+}
+
+// Normaliza telefone para comparação
+function normalizePhone(phone: string | null): string {
+  if (!phone) return '';
+  return phone.replace(/\D/g, '');
+}
+
+// Verifica se é duplicado
+function findDuplicate(row: { email: string; phone: string; name: string }, existingContacts: Contact[]): Contact | null {
+  const normalizedPhone = normalizePhone(row.phone);
+  const normalizedEmail = row.email.toLowerCase().trim();
+  const normalizedName = row.name.toLowerCase().trim();
+
+  // Primeiro tenta por email (mais confiável)
+  if (normalizedEmail) {
+    const byEmail = existingContacts.find(c =>
+      c.email && c.email.toLowerCase().trim() === normalizedEmail
+    );
+    if (byEmail) return byEmail;
+  }
+
+  // Depois por telefone
+  if (normalizedPhone && normalizedPhone.length >= 8) {
+    const byPhone = existingContacts.find(c =>
+      normalizePhone(c.phone) === normalizedPhone
+    );
+    if (byPhone) return byPhone;
+  }
+
+  // Por último, por nome + empresa (menos confiável)
+  if (normalizedName) {
+    const byName = existingContacts.find(c =>
+      c.name.toLowerCase().trim() === normalizedName
+    );
+    if (byName) return byName;
+  }
+
+  return null;
 }
 
 function detectColumnMapping(headers: string[]): Record<string, number> {
@@ -140,6 +195,16 @@ export function ImportModal({ isOpen, onClose, onImportComplete }: ImportModalPr
   const [importProgress, setImportProgress] = useState({ done: 0, total: 0 });
   const [importErrors, setImportErrors] = useState<string[]>([]);
   const [showMappingDetails, setShowMappingDetails] = useState(false);
+  const [existingContacts, setExistingContacts] = useState<Contact[]>([]);
+
+  // Carrega contatos existentes quando o modal abre
+  useEffect(() => {
+    if (isOpen && existingContacts.length === 0) {
+      api.getContacts()
+        .then(contacts => setExistingContacts(contacts))
+        .catch(err => console.error('Erro ao carregar contatos:', err));
+    }
+  }, [isOpen]);
 
   const resetState = () => {
     setStep('upload');
@@ -203,9 +268,14 @@ export function ImportModal({ isOpen, onClose, onImportComplete }: ImportModalPr
         const city = mapping.city !== undefined ? row[mapping.city] || '' : '';
         const tagRaw = mapping.tag !== undefined ? row[mapping.tag] || '' : '';
         const tag = parseTagValue(tagRaw);
+        const segmentsRaw = mapping.segments !== undefined ? row[mapping.segments] || '' : '';
+        const segments = parseSegments(segmentsRaw);
 
         const errors: string[] = [];
         if (!name.trim()) errors.push('Nome é obrigatório');
+
+        // Verifica duplicados
+        const duplicate = findDuplicate({ email, phone, name: name.trim() }, existingContacts);
 
         return {
           name: name.trim(),
@@ -215,8 +285,12 @@ export function ImportModal({ isOpen, onClose, onImportComplete }: ImportModalPr
           role: role.trim(),
           city: city.trim(),
           tag,
+          segments,
           isValid: errors.length === 0,
           errors,
+          isDuplicate: !!duplicate,
+          duplicateOf: duplicate,
+          action: duplicate ? 'skip' as const : 'create' as const, // Por padrão, pula duplicados
         };
       }).filter(row => row.name || row.email || row.company); // Filter empty rows
 
@@ -244,43 +318,79 @@ export function ImportModal({ isOpen, onClose, onImportComplete }: ImportModalPr
     setParsedData(prev => prev.filter((_, i) => i !== index));
   };
 
+  const handleChangeAction = (index: number, action: 'create' | 'update' | 'skip') => {
+    setParsedData(prev => prev.map((row, i) =>
+      i === index ? { ...row, action } : row
+    ));
+  };
+
+  const handleSetAllDuplicatesAction = (action: 'update' | 'skip') => {
+    setParsedData(prev => prev.map(row =>
+      row.isDuplicate ? { ...row, action } : row
+    ));
+  };
+
   const handleImport = async () => {
-    const validRows = parsedData.filter(row => row.isValid);
-    if (validRows.length === 0) {
-      alert('Nenhum contato válido para importar');
+    const rowsToProcess = parsedData.filter(row => row.isValid && row.action !== 'skip');
+    if (rowsToProcess.length === 0) {
+      alert('Nenhum contato para importar');
       return;
     }
 
     setStep('importing');
-    setImportProgress({ done: 0, total: validRows.length });
+    setImportProgress({ done: 0, total: rowsToProcess.length });
     setImportErrors([]);
 
     const errors: string[] = [];
+    let created = 0;
+    let updated = 0;
 
-    for (let i = 0; i < validRows.length; i++) {
-      const row = validRows[i];
+    for (let i = 0; i < rowsToProcess.length; i++) {
+      const row = rowsToProcess[i];
       try {
-        await api.createContact({
-          name: row.name,
-          email: row.email || null,
-          phone: row.phone || null,
-          company: row.company || null,
-          role: row.role || null,
-          city: row.city || null,
-          tag: row.tag,
-        });
+        if (row.action === 'update' && row.duplicateOf) {
+          // Atualiza o contato existente
+          await api.updateContact(row.duplicateOf.id, {
+            name: row.name,
+            email: row.email || null,
+            phone: row.phone || null,
+            company: row.company || null,
+            role: row.role || null,
+            city: row.city || null,
+            tag: row.tag,
+            segments: row.segments,
+          });
+          updated++;
+        } else {
+          // Cria novo contato
+          await api.createContact({
+            name: row.name,
+            email: row.email || null,
+            phone: row.phone || null,
+            company: row.company || null,
+            role: row.role || null,
+            city: row.city || null,
+            tag: row.tag,
+            segments: row.segments,
+          });
+          created++;
+        }
       } catch (err) {
-        errors.push(`Erro ao importar "${row.name}": ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
+        errors.push(`Erro ao ${row.action === 'update' ? 'atualizar' : 'importar'} "${row.name}": ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
       }
-      setImportProgress({ done: i + 1, total: validRows.length });
+      setImportProgress({ done: i + 1, total: rowsToProcess.length });
     }
 
     setImportErrors(errors);
+    setImportProgress(prev => ({ ...prev, created, updated }));
     setStep('done');
   };
 
-  const validCount = parsedData.filter(r => r.isValid).length;
   const invalidCount = parsedData.filter(r => !r.isValid).length;
+  const duplicateCount = parsedData.filter(r => r.isDuplicate).length;
+  const toCreateCount = parsedData.filter(r => r.isValid && r.action === 'create').length;
+  const toUpdateCount = parsedData.filter(r => r.isValid && r.action === 'update').length;
+  const toSkipCount = parsedData.filter(r => r.isValid && r.action === 'skip').length;
 
   if (!isOpen) return null;
 
@@ -323,6 +433,7 @@ export function ImportModal({ isOpen, onClose, onImportComplete }: ImportModalPr
                   <li><strong>Empresa</strong>: company, empresa</li>
                   <li><strong>Cargo</strong>: role, cargo, funcao</li>
                   <li><strong>Cidade</strong>: city, cidade</li>
+                  <li><strong>Segmentos</strong>: segments, segmentos, projetos (n8n, chapeu, parceria, consultoria)</li>
                   <li><strong>Tag</strong>: tag, etapa (lead, qualificado, proposta, negociacao, cliente, perdido)</li>
                 </ul>
               </div>
@@ -338,8 +449,18 @@ export function ImportModal({ isOpen, onClose, onImportComplete }: ImportModalPr
                 </div>
                 <div className="import-modal__stats">
                   <span className="import-modal__stat import-modal__stat--valid">
-                    <Check size={14} /> {validCount} válidos
+                    <Check size={14} /> {toCreateCount} novos
                   </span>
+                  {toUpdateCount > 0 && (
+                    <span className="import-modal__stat import-modal__stat--update">
+                      ↻ {toUpdateCount} atualizar
+                    </span>
+                  )}
+                  {toSkipCount > 0 && (
+                    <span className="import-modal__stat import-modal__stat--skip">
+                      ⊘ {toSkipCount} pular
+                    </span>
+                  )}
                   {invalidCount > 0 && (
                     <span className="import-modal__stat import-modal__stat--invalid">
                       <AlertCircle size={14} /> {invalidCount} inválidos
@@ -347,6 +468,28 @@ export function ImportModal({ isOpen, onClose, onImportComplete }: ImportModalPr
                   )}
                 </div>
               </div>
+
+              {/* Aviso de duplicados */}
+              {duplicateCount > 0 && (
+                <div className="import-modal__duplicates-warning">
+                  <AlertCircle size={16} />
+                  <span><strong>{duplicateCount}</strong> contato(s) já existem no sistema. O que deseja fazer?</span>
+                  <div className="import-modal__duplicates-actions">
+                    <button
+                      onClick={() => handleSetAllDuplicatesAction('skip')}
+                      className={`btn btn-sm ${toSkipCount >= duplicateCount ? 'btn-secondary' : 'btn-ghost'}`}
+                    >
+                      Pular todos
+                    </button>
+                    <button
+                      onClick={() => handleSetAllDuplicatesAction('update')}
+                      className={`btn btn-sm ${toUpdateCount >= duplicateCount ? 'btn-primary' : 'btn-ghost'}`}
+                    >
+                      Atualizar todos
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Mapping section */}
               <div className="import-modal__mapping">
@@ -386,30 +529,46 @@ export function ImportModal({ isOpen, onClose, onImportComplete }: ImportModalPr
                 <table className="import-modal__table">
                   <thead>
                     <tr>
-                      <th style={{ width: '40px' }}></th>
+                      <th style={{ width: '50px' }}>Status</th>
                       <th>Nome</th>
                       <th>Email</th>
                       <th>Telefone</th>
                       <th>Empresa</th>
                       <th>Cidade</th>
                       <th>Tag</th>
+                      <th style={{ width: '90px' }}>Ação</th>
                       <th style={{ width: '40px' }}></th>
                     </tr>
                   </thead>
                   <tbody>
                     {parsedData.map((row, index) => (
-                      <tr key={index} className={!row.isValid ? 'import-modal__row--invalid' : ''}>
+                      <tr key={index} className={`
+                        ${!row.isValid ? 'import-modal__row--invalid' : ''}
+                        ${row.isDuplicate ? 'import-modal__row--duplicate' : ''}
+                        ${row.action === 'skip' ? 'import-modal__row--skip' : ''}
+                      `}>
                         <td>
-                          {row.isValid ? (
-                            <Check size={14} className="import-modal__row-icon--valid" />
+                          {!row.isValid ? (
+                            <span title={row.errors.join(', ')} className="import-modal__status import-modal__status--invalid">
+                              <AlertCircle size={14} /> Erro
+                            </span>
+                          ) : row.isDuplicate ? (
+                            <span className="import-modal__status import-modal__status--duplicate" title={`Já existe: ${row.duplicateOf?.name}`}>
+                              ⚠️ Existe
+                            </span>
                           ) : (
-                            <span title={row.errors.join(', ')}>
-                              <AlertCircle size={14} className="import-modal__row-icon--invalid" />
+                            <span className="import-modal__status import-modal__status--new">
+                              <Check size={14} /> Novo
                             </span>
                           )}
                         </td>
                         <td className={!row.name ? 'import-modal__cell--empty' : ''}>
                           {row.name || '(vazio)'}
+                          {row.isDuplicate && row.duplicateOf && (
+                            <span className="import-modal__duplicate-hint">
+                              ↳ {row.duplicateOf.name}
+                            </span>
+                          )}
                         </td>
                         <td>{row.email || '—'}</td>
                         <td>{row.phone || '—'}</td>
@@ -421,6 +580,19 @@ export function ImportModal({ isOpen, onClose, onImportComplete }: ImportModalPr
                               {row.tag}
                             </span>
                           ) : '—'}
+                        </td>
+                        <td>
+                          {row.isValid && (
+                            <select
+                              value={row.action}
+                              onChange={e => handleChangeAction(index, e.target.value as 'create' | 'update' | 'skip')}
+                              className="import-modal__action-select"
+                            >
+                              {!row.isDuplicate && <option value="create">Criar</option>}
+                              {row.isDuplicate && <option value="update">Atualizar</option>}
+                              <option value="skip">Pular</option>
+                            </select>
+                          )}
                         </td>
                         <td>
                           <button
@@ -457,7 +629,14 @@ export function ImportModal({ isOpen, onClose, onImportComplete }: ImportModalPr
             <div className="import-modal__done">
               <Check size={48} className="import-modal__done-icon" />
               <h4>Importação concluída!</h4>
-              <p>{importProgress.done - importErrors.length} contatos importados com sucesso</p>
+              <div className="import-modal__done-stats">
+                {(importProgress as any).created > 0 && (
+                  <p><Check size={14} className="import-modal__row-icon--valid" /> {(importProgress as any).created} contato(s) criado(s)</p>
+                )}
+                {(importProgress as any).updated > 0 && (
+                  <p>↻ {(importProgress as any).updated} contato(s) atualizado(s)</p>
+                )}
+              </div>
 
               {importErrors.length > 0 && (
                 <div className="import-modal__errors">
@@ -488,10 +667,14 @@ export function ImportModal({ isOpen, onClose, onImportComplete }: ImportModalPr
               <button
                 onClick={handleImport}
                 className="btn btn-primary"
-                disabled={validCount === 0}
+                disabled={toCreateCount + toUpdateCount === 0}
               >
                 <Upload size={14} />
-                Importar {validCount} contato{validCount !== 1 ? 's' : ''}
+                {toCreateCount > 0 && toUpdateCount > 0
+                  ? `Criar ${toCreateCount} + Atualizar ${toUpdateCount}`
+                  : toUpdateCount > 0
+                    ? `Atualizar ${toUpdateCount} contato${toUpdateCount !== 1 ? 's' : ''}`
+                    : `Importar ${toCreateCount} contato${toCreateCount !== 1 ? 's' : ''}`}
               </button>
             </>
           )}
@@ -518,7 +701,7 @@ export function ImportModal({ isOpen, onClose, onImportComplete }: ImportModalPr
 // ============================================
 
 export function exportContactsToCSV(contacts: Contact[], filename: string = 'contatos.csv') {
-  const headers = ['Nome', 'Email', 'Telefone', 'Empresa', 'Cargo', 'Cidade', 'Etapa', 'Criado em', 'Atualizado em'];
+  const headers = ['Nome', 'Email', 'Telefone', 'Empresa', 'Cargo', 'Cidade', 'Segmentos', 'Etapa', 'Criado em', 'Atualizado em'];
 
   const formatPhone = (phone: string | null): string => {
     if (!phone) return '';
@@ -536,6 +719,18 @@ export function exportContactsToCSV(contacts: Contact[], filename: string = 'con
     negociacao: 'Negociação',
     cliente: 'Cliente',
     perdido: 'Perdido',
+  };
+
+  const segmentLabels: Record<string, string> = {
+    n8n: 'N8N',
+    chapeu: 'Chapéu',
+    parceria: 'Parceria',
+    consultoria: 'Consultoria',
+  };
+
+  const formatSegments = (segments: string | null): string => {
+    if (!segments) return '';
+    return segments.split(',').filter(Boolean).map(s => segmentLabels[s] || s).join(', ');
   };
 
   const formatDate = (dateStr: string): string => {
@@ -556,6 +751,7 @@ export function exportContactsToCSV(contacts: Contact[], filename: string = 'con
     escapeCSV(contact.company || ''),
     escapeCSV(contact.role || ''),
     escapeCSV(contact.city || ''),
+    escapeCSV(formatSegments(contact.segments)),
     escapeCSV(contact.tag ? tagLabels[contact.tag] || contact.tag : ''),
     escapeCSV(formatDate(contact.created_at)),
     escapeCSV(formatDate(contact.updated_at)),

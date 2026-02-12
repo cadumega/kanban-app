@@ -52,6 +52,7 @@ router.post('/', (req, res) => {
       title,
       description = '',
       column_id,
+      board_id,
       priority = 'media',
       category_id = null,
       month = null,
@@ -70,6 +71,17 @@ router.post('/', (req, res) => {
       return res.status(400).json({ error: 'Título e coluna são obrigatórios' });
     }
 
+    // Get board_id from column if not provided
+    let taskBoardId = board_id;
+    if (!taskBoardId) {
+      const column = db.prepare('SELECT board_id FROM columns WHERE id = ?').get(column_id);
+      taskBoardId = column?.board_id;
+    }
+
+    if (!taskBoardId) {
+      return res.status(400).json({ error: 'Board não encontrado' });
+    }
+
     // Get max position in column
     const maxPos = db.prepare(
       'SELECT MAX(position) as max FROM tasks WHERE column_id = ?'
@@ -78,9 +90,9 @@ router.post('/', (req, res) => {
 
     const id = uuidv4();
     db.prepare(`
-      INSERT INTO tasks (id, title, description, column_id, position, priority, category_id, month, assignee, dependent, value, points, start_date, project, blocked, blocked_by, blocked_reason)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(id, title, description, column_id, position, priority, category_id, month, assignee, dependent, value, points, start_date, project, blocked ? 1 : 0, blocked_by, blocked_reason);
+      INSERT INTO tasks (id, board_id, title, description, column_id, position, priority, category_id, month, assignee, dependent, value, points, start_date, project, blocked, blocked_by, blocked_reason)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(id, taskBoardId, title, description, column_id, position, priority, category_id, month, assignee, dependent, value, points, start_date, project, blocked ? 1 : 0, blocked_by, blocked_reason);
 
     const task = db.prepare(`
       SELECT t.*, c.name as category_name, c.color as category_color

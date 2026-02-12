@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
-import { X, Bell, Clock, Check, User, Building, ChevronRight, ChevronLeft, MapPin, List, CalendarDays } from 'lucide-react';
+import { X, Bell, Clock, Check, User, Building, ChevronRight, ChevronLeft, MapPin, List, CalendarDays, FileText } from 'lucide-react';
 import type { ContactFollowup } from '../../types';
 import * as api from '../../services/api';
+import { WeeklyDigestPanel } from './WeeklyDigestPanel';
 import './FollowupsPanel.css';
 
 const TAG_COLORS: Record<string, string> = {
@@ -42,6 +43,7 @@ export function FollowupsPanel({ isOpen, onClose, onOpenContact }: FollowupsPane
     return { year: now.getFullYear(), month: now.getMonth() };
   });
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [showDigestPanel, setShowDigestPanel] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -234,6 +236,14 @@ export function FollowupsPanel({ isOpen, onClose, onOpenContact }: FollowupsPane
                 <CalendarDays size={14} />
               </button>
             </div>
+            <button
+              onClick={() => setShowDigestPanel(true)}
+              className="btn btn-sm btn-secondary"
+              title="Gerar Relatório Semanal"
+            >
+              <FileText size={14} />
+              Digest
+            </button>
             <button onClick={onClose} className="btn btn-icon btn-ghost">
               <X size={18} />
             </button>
@@ -494,6 +504,12 @@ export function FollowupsPanel({ isOpen, onClose, onOpenContact }: FollowupsPane
           </div>
         )}
       </div>
+
+      {/* Weekly Digest Panel */}
+      <WeeklyDigestPanel
+        isOpen={showDigestPanel}
+        onClose={() => setShowDigestPanel(false)}
+      />
     </div>
   );
 }

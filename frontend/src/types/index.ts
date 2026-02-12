@@ -83,6 +83,9 @@ export interface MoveTaskPayload {
 // CRM Types
 export type ContactTag = 'lead' | 'qualificado' | 'proposta' | 'negociacao' | 'cliente' | 'perdido' | null;
 
+// Segmentos disponíveis para contatos
+export type ContactSegment = 'n8n' | 'chapeu' | 'parceria' | 'consultoria';
+
 export interface Contact {
   id: string;
   name: string;
@@ -94,6 +97,7 @@ export interface Contact {
   role: string | null;
   tag: ContactTag;
   city: string | null;
+  segments: string | null; // comma-separated: "n8n,chapeu"
   valor_implementacao: number;
   valor_mensal: number;
   is_robot: number;

@@ -7,7 +7,7 @@
   border-radius: var(--radius);
   cursor: pointer;
   transition: all var(--transition-fast);
-  overflow: hidden;
+  overflow: visible; /* Permite ver todo o conteúdo */
 }
 
 .task-card:hover {
@@ -230,6 +230,25 @@
 .task-card__deadline--overdue .task-card__deadline-label {
   color: var(--danger);
   animation: pulse-danger 1s infinite;
+}
+
+/* Completed task - on time */
+.task-card__deadline--completed .task-card__deadline-fill {
+  background: var(--success);
+}
+.task-card__deadline--completed .task-card__deadline-label {
+  color: var(--success);
+  font-weight: 700;
+}
+
+/* Completed task - late */
+.task-card__deadline--completed-late .task-card__deadline-fill {
+  background: var(--warning);
+  width: 100% !important;
+}
+.task-card__deadline--completed-late .task-card__deadline-label {
+  color: var(--warning);
+  font-weight: 700;
 }
 
 @keyframes pulse-bar {

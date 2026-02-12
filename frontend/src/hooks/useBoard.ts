@@ -1,8 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Column, Task, Category, Filters, CreateTaskPayload, Priority } from '../types';
 import * as api from '../services/api';
+import type { Board, BoardLimitInfo } from '../services/api';
 
 export function useBoard() {
+  const [boards, setBoards] = useState<Board[]>([]);
+  const [currentBoardId, setCurrentBoardId] = useState<string | null>(() => {
+    return localStorage.getItem('currentBoardId');
+  });
+  const [boardLimitInfo, setBoardLimitInfo] = useState<BoardLimitInfo | null>(null);
   const [columns, setColumns] = useState<Column[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -14,12 +20,41 @@ export function useBoard() {
     blocked: null,
   });
 
-  // Load initial data
-  const loadData = useCallback(async () => {
+  // Load boards list
+  const loadBoards = useCallback(async () => {
+    try {
+      const [boardsData, limitInfo] = await Promise.all([
+        api.getBoards(),
+        api.getBoardLimitInfo(),
+      ]);
+      setBoards(boardsData);
+      setBoardLimitInfo(limitInfo);
+
+      // Set current board if not set or invalid
+      if (boardsData.length > 0) {
+        const savedBoardId = localStorage.getItem('currentBoardId');
+        const validBoard = boardsData.find(b => b.id === savedBoardId);
+        if (validBoard) {
+          setCurrentBoardId(validBoard.id);
+        } else {
+          setCurrentBoardId(boardsData[0].id);
+          localStorage.setItem('currentBoardId', boardsData[0].id);
+        }
+      }
+      return boardsData;
+    } catch (err) {
+      console.error('Erro ao carregar boards:', err);
+      return [];
+    }
+  }, []);
+
+  // Load columns and tasks for current board
+  const loadData = useCallback(async (boardId?: string) => {
     try {
       setLoading(true);
+      const targetBoardId = boardId || currentBoardId;
       const [columnsData, categoriesData] = await Promise.all([
-        api.getColumns(),
+        api.getColumns(targetBoardId || undefined),
         api.getCategories(),
       ]);
       setColumns(columnsData);
@@ -31,11 +66,78 @@ export function useBoard() {
     } finally {
       setLoading(false);
     }
+  }, [currentBoardId]);
+
+  // Load boards first, then data
+  useEffect(() => {
+    const init = async () => {
+      const boardsData = await loadBoards();
+      if (boardsData.length > 0) {
+        const savedBoardId = localStorage.getItem('currentBoardId');
+        const validBoard = boardsData.find(b => b.id === savedBoardId);
+        const targetBoardId = validBoard?.id || boardsData[0].id;
+        await loadData(targetBoardId);
+      } else {
+        setLoading(false);
+      }
+    };
+    init();
   }, []);
 
-  useEffect(() => {
-    loadData();
+  // Switch board
+  const selectBoard = useCallback(async (boardId: string) => {
+    setCurrentBoardId(boardId);
+    localStorage.setItem('currentBoardId', boardId);
+    await loadData(boardId);
   }, [loadData]);
+
+  // Create board
+  const createBoard = async (name: string) => {
+    try {
+      const newBoard = await api.createBoard(name);
+      setBoards(prev => [...prev, newBoard]);
+      setBoardLimitInfo(prev => prev ? { ...prev, current: prev.current + 1, canCreate: prev.current + 1 < prev.limit } : null);
+      await selectBoard(newBoard.id);
+      return newBoard;
+    } catch (err: any) {
+      const message = err.response?.data?.error || 'Erro ao criar board';
+      setError(message);
+      throw new Error(message);
+    }
+  };
+
+  // Update board
+  const updateBoard = async (id: string, name: string) => {
+    try {
+      const updated = await api.updateBoard(id, name);
+      setBoards(prev => prev.map(b => b.id === id ? { ...b, name: updated.name } : b));
+      return updated;
+    } catch (err) {
+      setError('Erro ao atualizar board');
+      throw err;
+    }
+  };
+
+  // Delete board
+  const deleteBoard = async (id: string) => {
+    try {
+      await api.deleteBoard(id);
+      const remaining = boards.filter(b => b.id !== id);
+      setBoards(remaining);
+      setBoardLimitInfo(prev => prev ? { ...prev, current: prev.current - 1, canCreate: true } : null);
+
+      // If deleted current board, switch to first remaining
+      if (currentBoardId === id && remaining.length > 0) {
+        await selectBoard(remaining[0].id);
+      }
+    } catch (err: any) {
+      const message = err.response?.data?.error || 'Erro ao excluir board';
+      setError(message);
+      throw new Error(message);
+    }
+  };
+
+  const currentBoard = boards.find(b => b.id === currentBoardId);
 
   // Filter tasks
   const getFilteredColumns = useCallback(() => {
@@ -60,7 +162,7 @@ export function useBoard() {
   // Column operations
   const addColumn = async (title: string, color?: string) => {
     try {
-      const newColumn = await api.createColumn(title, color);
+      const newColumn = await api.createColumn(title, color, currentBoardId || undefined);
       setColumns(prev => [...prev, newColumn]);
     } catch (err) {
       setError('Erro ao criar coluna');
@@ -278,6 +380,16 @@ export function useBoard() {
   }, [columns]);
 
   return {
+    // Boards
+    boards,
+    currentBoard,
+    currentBoardId,
+    boardLimitInfo,
+    selectBoard,
+    createBoard,
+    updateBoard,
+    deleteBoard,
+    // Columns and tasks
     columns,
     categories,
     loading,
@@ -298,6 +410,6 @@ export function useBoard() {
     removeCategory,
     getMonths,
     getStats,
-    refresh: loadData,
+    refresh: () => loadData(currentBoardId || undefined),
   };
 }

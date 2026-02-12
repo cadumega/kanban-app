@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Loader2, RefreshCw, PanelLeft, Users, FolderKanban, Settings, LogOut, Bell, LayoutDashboard, TrendingUp } from 'lucide-react';
 import { Board } from './components/Board/Board';
+import { BoardSelector } from './components/Board/BoardSelector';
 import { Sidebar } from './components/Sidebar/Sidebar';
 import { TaskModal } from './components/TaskModal/TaskModal';
 import { ContactsPanel } from './components/Contacts/ContactsPanel';
@@ -75,6 +76,15 @@ function App() {
 
 function AuthenticatedApp({ user, onLogout }: { user: User; onLogout: () => void }) {
   const {
+    // Boards
+    boards,
+    currentBoard,
+    boardLimitInfo,
+    selectBoard,
+    createBoard,
+    updateBoard,
+    deleteBoard,
+    // Columns and tasks
     columns,
     categories,
     loading,
@@ -335,7 +345,15 @@ function AuthenticatedApp({ user, onLogout }: { user: User; onLogout: () => void
                   <PanelLeft size={18} />
                 </button>
               )}
-              <h1>Minhas Tarefas</h1>
+              <BoardSelector
+                boards={boards}
+                currentBoard={currentBoard}
+                boardLimitInfo={boardLimitInfo}
+                onSelectBoard={selectBoard}
+                onCreateBoard={createBoard}
+                onUpdateBoard={updateBoard}
+                onDeleteBoard={deleteBoard}
+              />
               {stats.totalValue > 0 && (
                 <span style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px', background: 'var(--success-light)', color: 'var(--success)', borderRadius: 'var(--radius)', fontSize: 14, fontWeight: 600 }}>
                   {formatValue(stats.totalValue)}

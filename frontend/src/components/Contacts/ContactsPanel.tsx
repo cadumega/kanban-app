@@ -25,13 +25,19 @@ import {
   MessageSquare,
   BarChart3,
   CalendarDays,
+  FileText,
+  TrendingUp,
+  Lightbulb,
 } from 'lucide-react';
-import type { Contact, ContactFollowup, ContactTag } from '../../types';
+import type { Contact, ContactFollowup, ContactTag, ContactSegment } from '../../types';
 import * as api from '../../services/api';
 import { ImportModal, exportContactsToCSV } from './ContactImportExport';
 import { ContactDetailModal } from './ContactDetailModal';
 import { ReportsPanel } from './ReportsPanel';
 import { FollowupsPanel } from './FollowupsPanel';
+import { WeeklyDigestPanel } from './WeeklyDigestPanel';
+import { AnalyticsDashboard } from './AnalyticsDashboard';
+import { InsightsPanel } from './InsightsPanel';
 import './ContactsPanel.css';
 
 interface ContactsPanelProps {
@@ -57,6 +63,14 @@ const TAG_OPTIONS: { value: ContactTag; label: string; color: string }[] = [
 // Funnel stages for Kanban (excluding null)
 const FUNNEL_STAGES = TAG_OPTIONS.filter(t => t.value !== null);
 
+// Segment options for filtering
+const SEGMENT_OPTIONS: { value: ContactSegment; label: string; color: string }[] = [
+  { value: 'n8n', label: 'N8N', color: '#EA4B71' },
+  { value: 'chapeu', label: 'Chapéu', color: '#8B5CF6' },
+  { value: 'parceria', label: 'Parceria', color: '#22C55E' },
+  { value: 'consultoria', label: 'Consultoria', color: '#F59E0B' },
+];
+
 const getTagInfo = (tag: ContactTag) => {
   return TAG_OPTIONS.find(t => t.value === tag) || TAG_OPTIONS[0];
 };
@@ -81,6 +95,7 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
   const [showFilters, setShowFilters] = useState(false);
   const [cityFilter, setCityFilter] = useState<string>('all');
   const [tagFilter, setTagFilter] = useState<string>('all');
+  const [segmentFilter, setSegmentFilter] = useState<string>('all'); // all or specific segment
   const [followupFilter, setFollowupFilter] = useState<string>('all'); // all, has, none, overdue
   const [sortField, setSortField] = useState<SortField>('company');
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
@@ -115,6 +130,9 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
   const [detailContact, setDetailContact] = useState<Contact | null>(null);
   const [showReportsPanel, setShowReportsPanel] = useState(false);
   const [showFollowupsPanel, setShowFollowupsPanel] = useState(false);
+  const [showDigestPanel, setShowDigestPanel] = useState(false);
+  const [showAnalyticsDashboard, setShowAnalyticsDashboard] = useState(false);
+  const [showInsightsPanel, setShowInsightsPanel] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -131,13 +149,13 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
   // ESC key to close panel (only if no modal is open)
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen && !showImportModal && !showDetailModal && !showReportsPanel && !showFollowupsPanel && !isEditing) {
+      if (e.key === 'Escape' && isOpen && !showImportModal && !showDetailModal && !showReportsPanel && !showFollowupsPanel && !showDigestPanel && !showAnalyticsDashboard && !showInsightsPanel && !isEditing) {
         onClose();
       }
     };
     window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
-  }, [isOpen, showImportModal, showDetailModal, showReportsPanel, showFollowupsPanel, isEditing, onClose]);
+  }, [isOpen, showImportModal, showDetailModal, showReportsPanel, showFollowupsPanel, showDigestPanel, showAnalyticsDashboard, showInsightsPanel, isEditing, onClose]);
 
   const loadContacts = async () => {
     setLoading(true);
@@ -218,6 +236,15 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
         if (tagFilter !== 'none' && contact.tag !== tagFilter) return false;
       }
 
+      // Segment filter
+      if (segmentFilter !== 'all') {
+        if (segmentFilter === 'none' && contact.segments) return false;
+        if (segmentFilter !== 'none') {
+          if (!contact.segments) return false;
+          if (!contact.segments.split(',').includes(segmentFilter)) return false;
+        }
+      }
+
       // Follow-up filter
       if (followupFilter !== 'all') {
         const hasPending = contactHasPendingFollowup(contact.id);
@@ -280,7 +307,7 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
     });
 
     return result;
-  }, [contacts, cityFilter, tagFilter, followupFilter, searchQuery, sortField, sortOrder, allPendingFollowups]);
+  }, [contacts, cityFilter, tagFilter, segmentFilter, followupFilter, searchQuery, sortField, sortOrder, allPendingFollowups]);
 
   // Group contacts by tag for Kanban view
   const contactsByTag = useMemo(() => {
@@ -456,12 +483,14 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
   const activeFiltersCount = [
     cityFilter !== 'all',
     tagFilter !== 'all',
+    segmentFilter !== 'all',
     followupFilter !== 'all',
   ].filter(Boolean).length;
 
   const clearAllFilters = () => {
     setCityFilter('all');
     setTagFilter('all');
+    setSegmentFilter('all');
     setFollowupFilter('all');
     setSearchQuery('');
   };
@@ -529,22 +558,45 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
           </div>
 
           <div className="contacts-panel__header-right">
-            <button onClick={() => setShowFollowupsPanel(true)} className="btn btn-secondary" title="Calendário de Follow-ups">
+            {/* Insights - Destaque */}
+            <button onClick={() => setShowInsightsPanel(true)} className="btn btn-insights" title="Insights e Acoes">
+              <Lightbulb size={16} />
+              Insights
+            </button>
+
+            {/* Separador visual */}
+            <div className="contacts-panel__header-divider" />
+
+            {/* Analises */}
+            <button onClick={() => setShowAnalyticsDashboard(true)} className="btn btn-secondary btn-analytics" title="Dashboard Analitico">
+              <TrendingUp size={16} />
+              Analytics
+            </button>
+            <button onClick={() => setShowDigestPanel(true)} className="btn btn-secondary" title="Relatorio Semanal">
+              <FileText size={16} />
+              Digest
+            </button>
+            <button onClick={() => setShowFollowupsPanel(true)} className="btn btn-secondary" title="Calendario de Follow-ups">
               <CalendarDays size={16} />
-              Calendário
+              Calendario
             </button>
-            <button onClick={() => setShowReportsPanel(true)} className="btn btn-secondary" title="Relatórios">
+            <button onClick={() => setShowReportsPanel(true)} className="btn btn-secondary" title="Relatorios">
               <BarChart3 size={16} />
-              Relatórios
+              Relatorios
             </button>
-            <button onClick={() => setShowImportModal(true)} className="btn btn-secondary" title="Importar CSV">
-              <Upload size={16} />
-              Importar
+
+            {/* Separador visual */}
+            <div className="contacts-panel__header-divider" />
+
+            {/* Import/Export */}
+            <button onClick={() => setShowImportModal(true)} className="btn btn-secondary btn-sm" title="Importar CSV">
+              <Upload size={14} />
             </button>
-            <button onClick={() => handleExport(filteredContacts.length !== contacts.length)} className="btn btn-secondary" title="Exportar CSV">
-              <Download size={16} />
-              Exportar {filteredContacts.length !== contacts.length ? `(${filteredContacts.length})` : ''}
+            <button onClick={() => handleExport(filteredContacts.length !== contacts.length)} className="btn btn-secondary btn-sm" title="Exportar CSV">
+              <Download size={14} />
             </button>
+
+            {/* Acoes principais */}
             <button onClick={handleNewContact} className="btn btn-primary">
               <Plus size={16} />
               Novo Contato
@@ -567,6 +619,18 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
                   <option value="none">Sem tag</option>
                   {FUNNEL_STAGES.map(stage => (
                     <option key={stage.value} value={stage.value!}>{stage.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Segment filter */}
+              <div className="contacts-panel__filter-group">
+                <label className="contacts-panel__filter-label">Segmento</label>
+                <select className="contacts-panel__filter-select" value={segmentFilter} onChange={e => setSegmentFilter(e.target.value)}>
+                  <option value="all">Todos</option>
+                  <option value="none">Sem segmento</option>
+                  {SEGMENT_OPTIONS.map(seg => (
+                    <option key={seg.value} value={seg.value}>{seg.label}</option>
                   ))}
                 </select>
               </div>
@@ -678,6 +742,7 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
                   <span>Empresa</span>
                   <span>Telefone</span>
                   <span>Cidade</span>
+                  <span>Segmento</span>
                   <span>Etapa</span>
                   <span>Status</span>
                 </div>
@@ -736,6 +801,25 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
                           </span>
                           <span className="contacts-panel__col-city">
                             {contact.city || '—'}
+                          </span>
+                          <span className="contacts-panel__col-segment">
+                            {contact.segments ? (
+                              <div className="contacts-panel__segment-badges">
+                                {contact.segments.split(',').filter(Boolean).map(seg => {
+                                  const segInfo = SEGMENT_OPTIONS.find(s => s.value === seg);
+                                  if (!segInfo) return null;
+                                  return (
+                                    <span
+                                      key={seg}
+                                      className="contacts-panel__segment-badge"
+                                      style={{ background: `${segInfo.color}20`, color: segInfo.color }}
+                                    >
+                                      {segInfo.label}
+                                    </span>
+                                  );
+                                })}
+                              </div>
+                            ) : '—'}
                           </span>
                           <span className="contacts-panel__col-tag">
                             {contact.tag ? (
@@ -998,6 +1082,32 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
             setDetailContact(contact);
             setShowDetailModal(true);
             setShowFollowupsPanel(false);
+          }
+        }}
+      />
+
+      {/* Weekly Digest Panel */}
+      <WeeklyDigestPanel
+        isOpen={showDigestPanel}
+        onClose={() => setShowDigestPanel(false)}
+      />
+
+      {/* Analytics Dashboard */}
+      <AnalyticsDashboard
+        isOpen={showAnalyticsDashboard}
+        onClose={() => setShowAnalyticsDashboard(false)}
+      />
+
+      {/* Insights Panel */}
+      <InsightsPanel
+        isOpen={showInsightsPanel}
+        onClose={() => setShowInsightsPanel(false)}
+        onOpenContact={(contactId) => {
+          const contact = contacts.find(c => c.id === contactId);
+          if (contact) {
+            setDetailContact(contact);
+            setShowDetailModal(true);
+            setShowInsightsPanel(false);
           }
         }}
       />

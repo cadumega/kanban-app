@@ -3,20 +3,34 @@ const { v4: uuidv4 } = require('uuid');
 
 const router = express.Router();
 
-// Get all columns with their tasks
+// Get all columns with their tasks (filtered by board_id)
 router.get('/', (req, res) => {
   try {
     const db = req.db;
+    const { board_id } = req.query;
+
+    // If no board_id specified, get the first board
+    let boardId = board_id;
+    if (!boardId) {
+      const firstBoard = db.prepare('SELECT id FROM boards ORDER BY position ASC LIMIT 1').get();
+      boardId = firstBoard?.id;
+    }
+
+    if (!boardId) {
+      return res.json([]);
+    }
+
     const columns = db.prepare(`
-      SELECT * FROM columns ORDER BY position ASC
-    `).all();
+      SELECT * FROM columns WHERE board_id = ? ORDER BY position ASC
+    `).all(boardId);
 
     const tasks = db.prepare(`
       SELECT t.*, c.name as category_name, c.color as category_color
       FROM tasks t
       LEFT JOIN categories c ON t.category_id = c.id
+      WHERE t.board_id = ?
       ORDER BY t.position ASC
-    `).all();
+    `).all(boardId);
 
     // Get checklist counts for each task
     const checklistCounts = db.prepare(`
@@ -54,19 +68,30 @@ router.get('/', (req, res) => {
 router.post('/', (req, res) => {
   try {
     const db = req.db;
-    const { title, color = '#6366F1' } = req.body;
+    const { title, color = '#6366F1', board_id } = req.body;
 
     if (!title) {
       return res.status(400).json({ error: 'Título é obrigatório' });
     }
 
-    const maxPosition = db.prepare('SELECT MAX(position) as max FROM columns').get();
+    // Get board_id - use provided or first board
+    let boardId = board_id;
+    if (!boardId) {
+      const firstBoard = db.prepare('SELECT id FROM boards ORDER BY position ASC LIMIT 1').get();
+      boardId = firstBoard?.id;
+    }
+
+    if (!boardId) {
+      return res.status(400).json({ error: 'Board não encontrado' });
+    }
+
+    const maxPosition = db.prepare('SELECT MAX(position) as max FROM columns WHERE board_id = ?').get(boardId);
     const position = (maxPosition.max ?? -1) + 1;
 
     const id = uuidv4();
     db.prepare(`
-      INSERT INTO columns (id, title, position, color) VALUES (?, ?, ?, ?)
-    `).run(id, title, position, color);
+      INSERT INTO columns (id, board_id, title, position, color) VALUES (?, ?, ?, ?, ?)
+    `).run(id, boardId, title, position, color);
 
     const column = db.prepare('SELECT * FROM columns WHERE id = ?').get(id);
     res.status(201).json({ ...column, tasks: [] });

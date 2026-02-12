@@ -68,14 +68,62 @@ export const deleteUser = async (id: string): Promise<void> => {
   await api.delete(`/auth/users/${id}`);
 };
 
-// Columns
-export const getColumns = async (): Promise<Column[]> => {
-  const { data } = await api.get('/columns');
+// Boards
+export interface Board {
+  id: string;
+  name: string;
+  position: number;
+  columns_count?: number;
+  tasks_count?: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BoardLimitInfo {
+  current: number;
+  limit: number;
+  canCreate: boolean;
+  isMaster: boolean;
+}
+
+export const getBoards = async (): Promise<Board[]> => {
+  const { data } = await api.get('/boards');
   return data;
 };
 
-export const createColumn = async (title: string, color?: string): Promise<Column> => {
-  const { data } = await api.post('/columns', { title, color });
+export const getBoard = async (id: string): Promise<Board> => {
+  const { data } = await api.get(`/boards/${id}`);
+  return data;
+};
+
+export const createBoard = async (name: string): Promise<Board> => {
+  const { data } = await api.post('/boards', { name });
+  return data;
+};
+
+export const updateBoard = async (id: string, name: string): Promise<Board> => {
+  const { data } = await api.put(`/boards/${id}`, { name });
+  return data;
+};
+
+export const deleteBoard = async (id: string): Promise<void> => {
+  await api.delete(`/boards/${id}`);
+};
+
+export const getBoardLimitInfo = async (): Promise<BoardLimitInfo> => {
+  const { data } = await api.get('/boards/limit/info');
+  return data;
+};
+
+// Columns
+export const getColumns = async (boardId?: string): Promise<Column[]> => {
+  const params = boardId ? { board_id: boardId } : {};
+  const { data } = await api.get('/columns', { params });
+  return data;
+};
+
+export const createColumn = async (title: string, color?: string, boardId?: string): Promise<Column> => {
+  const { data } = await api.post('/columns', { title, color, board_id: boardId });
   return data;
 };
 
@@ -200,6 +248,11 @@ export const getContactImageUrl = (imagePath: string): string => {
   return `/api/contacts/images/${imagePath}`;
 };
 
+export const updateContactNote = async (contactId: string, noteId: string, content: string): Promise<ContactNote> => {
+  const { data } = await api.put(`/contacts/${contactId}/notes/${noteId}`, { content });
+  return data;
+};
+
 export const deleteContactNote = async (contactId: string, noteId: string): Promise<void> => {
   await api.delete(`/contacts/${contactId}/notes/${noteId}`);
 };
@@ -290,5 +343,213 @@ export const deleteProject = async (id: string): Promise<void> => {
 // Reports / Statistics
 export const getReportsStatistics = async () => {
   const { data } = await api.get('/contacts/reports/statistics');
+  return data;
+};
+
+// Weekly Digest
+export interface LeadIntelligence {
+  score: number;
+  classification: {
+    label: 'HOT' | 'WARM' | 'COLD' | 'AT_RISK';
+    color: string;
+    priority: string;
+  };
+  alerts: {
+    type: string;
+    severity: 'high' | 'medium' | 'low';
+    category?: string;
+    message: string;
+  }[];
+  signals: {
+    type: string;
+    category: string;
+    keyword: string;
+  }[];
+  daysSinceContact: number;
+}
+
+export interface WeeklyDigestAlert {
+  type: string;
+  severity: 'high' | 'medium' | 'low';
+  category?: string;
+  message: string;
+  contact_id: string;
+  contact_name: string;
+  contact_company: string | null;
+}
+
+export interface WeeklyDigestContact {
+  contact_id: string;
+  contact_name: string;
+  contact_company: string | null;
+  contact_role: string | null;
+  contact_city: string | null;
+  contact_tag: string | null;
+  contact_segments: string | null;
+  valor_implementacao: number;
+  valor_mensal: number;
+  followups: {
+    id: string;
+    date: string;
+    description: string;
+  }[];
+  notes: {
+    content: string;
+    created_at: string;
+  }[];
+  intelligence?: LeadIntelligence;
+}
+
+export interface WeeklyDigestResponse {
+  period: {
+    start: string;
+    end: string;
+  };
+  summary: {
+    total_contacts: number;
+    total_followups: number;
+    overdue: number;
+    today: number;
+    upcoming: number;
+    hot_leads?: number;
+    at_risk_leads?: number;
+  };
+  alerts?: WeeklyDigestAlert[];
+  hot_leads?: WeeklyDigestContact[];
+  at_risk_leads?: WeeklyDigestContact[];
+  by_segment: Record<string, WeeklyDigestContact[]>;
+}
+
+export const getWeeklyDigest = async (): Promise<WeeklyDigestResponse> => {
+  const { data } = await api.get('/contacts/reports/weekly-digest');
+  return data;
+};
+
+// Analytics Dashboard
+export interface AnalyticsFunnelStage {
+  tag: string | null;
+  label: string;
+  color: string;
+  count: number;
+  percentage: number;
+  valor_mensal: number;
+  valor_implementacao: number;
+}
+
+export interface AnalyticsVelocity {
+  tag: string;
+  label: string;
+  color: string;
+  avg_days: number | null;
+  transitions: number;
+}
+
+export interface AnalyticsMonth {
+  month: string;
+  notes: number;
+  followups: number;
+  new_contacts: number;
+  conversions: number;
+}
+
+export interface AnalyticsSegment {
+  name: string;
+  count: number;
+  won: number;
+  lost: number;
+  conversion_rate: number;
+  valor_mensal: number;
+}
+
+export interface AnalyticsActivity {
+  type: 'note' | 'followup' | 'tag_change';
+  id: string;
+  description: string | null;
+  date: string;
+  contact_id: string;
+  contact_name: string;
+  contact_company: string | null;
+  contact_tag: string | null;
+}
+
+export interface AnalyticsHotContact {
+  id: string;
+  name: string;
+  company: string | null;
+  tag: string | null;
+  valor_mensal: number;
+  notes_count: number;
+  last_note_date: string | null;
+}
+
+export interface AnalyticsResponse {
+  overview: {
+    total_contacts: number;
+    active_deals: number;
+    won_deals: number;
+    lost_deals: number;
+    conversion_rate: number;
+    total_valor_mensal: number;
+    total_valor_impl: number;
+    avg_deal_value: number;
+  };
+  funnel: AnalyticsFunnelStage[];
+  velocity: AnalyticsVelocity[];
+  months: AnalyticsMonth[];
+  segments: AnalyticsSegment[];
+  recent_activity: AnalyticsActivity[];
+  hot_contacts: AnalyticsHotContact[];
+}
+
+export const getAnalytics = async (): Promise<AnalyticsResponse> => {
+  const { data } = await api.get('/contacts/reports/analytics');
+  return data;
+};
+
+// Insights / AI Assistant
+export interface InsightContact {
+  id: string;
+  name: string;
+  company: string | null;
+  tag: string | null;
+  valor_mensal?: number;
+  valor_implementacao?: number;
+  days?: number;
+  keywords?: string;
+  objections?: string;
+  note_preview?: string;
+  message?: string;
+  notes_count?: number;
+  completed_followups?: number;
+  last_note?: string;
+  followup_description?: string;
+  scheduled_date?: string;
+}
+
+export interface Insight {
+  id: string;
+  type: string;
+  priority: number; // 1=critical, 2=high, 3=medium, 4=low
+  title: string;
+  description: string;
+  contacts: InsightContact[];
+  action: string;
+  created_at: string;
+}
+
+export interface InsightsResponse {
+  generated_at: string;
+  summary: {
+    total_insights: number;
+    critical: number;
+    high: number;
+    medium: number;
+    low: number;
+  };
+  insights: Insight[];
+}
+
+export const getInsights = async (): Promise<InsightsResponse> => {
+  const { data } = await api.get('/contacts/reports/insights');
   return data;
 };
