@@ -12,7 +12,33 @@ Sistema de gerenciamento de tarefas estilo Kanban com CRM integrado, follow-ups 
 
 ## Novidades Recentes
 
-### Fevereiro 2026 (Mais Recente)
+### Fevereiro 2026 - Sistema de Inteligencia (Mais Recente)
+- **Insights Panel** - Botao amarelo "Insights" no CRM com analise automatica
+  - Negocios parados (proposta/negociacao sem atividade >10 dias)
+  - Sinais de compra detectados em notas
+  - Follow-ups atrasados
+  - Leads esfriando (tinham engajamento, pararam)
+  - Contatos sem follow-up agendado
+  - Alto valor em risco (R$1000+/mes inativos)
+  - Objecoes detectadas ("caro", "depois", "concorrente")
+  - Sugestao de acao para cada insight
+- **Analytics Dashboard** - Botao "Analytics" com metricas visuais
+  - Funil de vendas com percentuais
+  - Pipeline velocity (tempo medio em cada etapa)
+  - Tendencias mensais (ultimos 6 meses)
+  - Performance por segmento
+  - Hot contacts (proximos a fechar)
+  - Timeline de atividade recente
+- **Weekly Digest** - Relatorio semanal com scoring de leads
+  - Lead Scoring (0-100) com classificacao HOT/WARM/COLD/AT_RISK
+  - Alertas de leads esfriando
+  - Sinais de compra detectados
+  - Organizacao por segmento e data
+- **Edicao de Notas** - Editar comentarios ja registrados no historico
+- **Multi-board** - Suporte a multiplos quadros Kanban independentes
+- **Header CRM reorganizado** - Botoes agrupados logicamente
+
+### Fevereiro 2026
 - **Sidebar recolhida por padrão** - Mais espaço para o board, expanda clicando no ícone
 - **Calendário de Follow-ups no CRM** - Botão "Calendário" no header do CRM
   - Visualização mensal dos follow-ups agendados
@@ -170,6 +196,80 @@ Este é o usuário master que pode criar outros usuários.
 - **Exportar CSV** - Exporte contatos para planilhas (compatível com Excel)
 - **Modal Expandido** - Clique no contato abre tela grande com todos os detalhes
 
+### Sistema de Inteligencia (CRM)
+
+Sistema de analise automatica para identificar oportunidades e riscos no pipeline.
+
+#### Lead Scoring (0-100)
+
+Cada contato recebe pontuacao baseada em:
+
+| Fator | Impacto |
+|-------|---------|
+| Quantidade de notas | +10 a +20 |
+| Dias desde ultima interacao | -20 a +15 |
+| Posicao no funil | +5 a +30 |
+| Valor (mensal/impl) | +10 |
+| Sinais de compra | +5 por keyword |
+| Follow-ups atrasados | -5 por atraso |
+
+**Classificacoes:**
+- **HOT** (80+): Prioridade critica
+- **WARM** (60-79): Alta prioridade
+- **COLD** (40-59): Media prioridade
+- **AT_RISK** (<40): Em risco
+
+#### Deteccao de Sinais de Compra
+
+Keywords que indicam intencao:
+- **Budget:** orcamento, quanto custa, investimento, proposta
+- **Urgencia:** urgente, deadline, rapido, essa semana
+- **Decisao:** aprovar, fechar, contratar, vamos fazer
+- **Interesse:** interessado, perfeito, otimo, quero
+
+#### Deteccao de Objecoes
+
+Keywords que indicam resistencia:
+- **Preco:** caro, sem verba, acima do orcamento
+- **Timing:** depois, proximo mes, mais tarde
+- **Competidor:** concorrente, comparando, cotacao
+- **Duvida:** preciso pensar, vou avaliar
+
+#### Insights Automaticos
+
+| Tipo | Descricao | Prioridade |
+|------|-----------|------------|
+| Negocios Parados | Proposta/negociacao >10 dias sem atividade | Critica |
+| Alto Valor em Risco | R$1000+/mes inativos >7 dias | Critica |
+| Follow-ups Atrasados | Datas vencidas | Critica |
+| Sinais de Compra | Keywords detectadas em notas | Alta |
+| Objecoes | Resistencias identificadas | Alta |
+| Leads Esfriando | Queda de engajamento | Alta |
+| Sem Follow-up | Etapas ativas sem proximo passo | Media |
+| Prontos para Avancar | Bom engajamento | Media |
+
+#### Evolucoes Futuras (Backlog)
+
+Features que podem ser implementadas:
+
+**Prioridade Alta:**
+- Health Score por contato
+- Alertas time-based automaticos
+- Agendamento auto de follow-ups
+- Auto-escalacao de leads (score >= 80)
+
+**Prioridade Media:**
+- Sugestao de proxima melhor acao
+- Previsao de receita do pipeline
+- Timeline consolidada
+- Analise de ciclo de vendas
+
+**Complementares:**
+- Analise de sentimento em notas
+- Heatmap de atividade
+- Tracker de concorrentes
+- Contatos similares
+
 ### Business Roadmap
 - Timeline visual de projetos por período
 - Tarefas agrupadas por projeto
@@ -267,6 +367,7 @@ lsof -ti:3001 | xargs kill -9  # Força parar porta 3001
 | 2 | **[02-BACKEND.md](./02-BACKEND.md)** | Como funciona o backend (rotas, banco, auth) |
 | 3 | **[03-DOCUMENTACAO-TECNICA.md](./03-DOCUMENTACAO-TECNICA.md)** | Detalhes técnicos (tipos, componentes) |
 | 4 | **[04-DEPLOY.md](./04-DEPLOY.md)** | Como publicar (Fly.io + Vercel) |
+| 5 | **[05-INTELIGENCIA-CRM.md](./05-INTELIGENCIA-CRM.md)** | Sistema de inteligencia e scoring |
 
 ---
 
@@ -287,8 +388,17 @@ kanban-app/
 │   ├── src/
 │   │   ├── components/
 │   │   │   ├── Board/
-│   │   │   ├── Contacts/     # CRM + Follow-ups
-│   │   │   ├── Roadmap/      # Business Roadmap
+│   │   │   │   ├── Board.tsx
+│   │   │   │   └── BoardSelector.tsx    # Seletor multi-board
+│   │   │   ├── Contacts/
+│   │   │   │   ├── ContactsPanel.tsx    # Painel principal CRM
+│   │   │   │   ├── ContactDetailModal.tsx
+│   │   │   │   ├── AnalyticsDashboard.tsx  # Metricas e funil
+│   │   │   │   ├── InsightsPanel.tsx    # Analise automatica
+│   │   │   │   ├── WeeklyDigestPanel.tsx   # Relatorio semanal
+│   │   │   │   ├── FollowupsPanel.tsx   # Calendario
+│   │   │   │   └── ReportsPanel.tsx
+│   │   │   ├── Roadmap/
 │   │   │   ├── Login/
 │   │   │   └── AdminPanel/
 │   │   ├── services/
