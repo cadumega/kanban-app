@@ -9,11 +9,17 @@ function authMiddleware(req, res, next) {
   try {
     const authHeader = req.headers.authorization;
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    // Support token via query param for image requests (img tags can't send headers)
+    const queryToken = req.query.token;
+
+    let token;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1];
+    } else if (queryToken) {
+      token = queryToken;
+    } else {
       return res.status(401).json({ error: 'Token não fornecido' });
     }
-
-    const token = authHeader.split(' ')[1];
     const decoded = jwt.verify(token, JWT_SECRET);
 
     // Verify user still exists and is active

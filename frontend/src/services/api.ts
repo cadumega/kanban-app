@@ -245,7 +245,9 @@ export const addContactNote = async (contactId: string, content: string, image?:
 };
 
 export const getContactImageUrl = (imagePath: string): string => {
-  return `/api/contacts/images/${imagePath}`;
+  const token = localStorage.getItem('token');
+  const baseUrl = `/api/contacts/images/${imagePath}`;
+  return token ? `${baseUrl}?token=${encodeURIComponent(token)}` : baseUrl;
 };
 
 export const updateContactNote = async (contactId: string, noteId: string, content: string): Promise<ContactNote> => {
