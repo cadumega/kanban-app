@@ -1,0 +1,133 @@
+/* Button Component */
+.btn-component {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 500;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.btn-component:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.btn-component:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Sizes */
+.btn-component--sm {
+  padding: 6px 12px;
+  font-size: 13px;
+  border-radius: var(--radius-sm);
+}
+
+.btn-component--md {
+  padding: 10px 16px;
+  font-size: 14px;
+}
+
+.btn-component--lg {
+  padding: 12px 24px;
+  font-size: 15px;
+}
+
+/* Full Width */
+.btn-component--full {
+  width: 100%;
+}
+
+/* Variants */
+.btn-component--primary {
+  background: var(--accent);
+  color: white;
+}
+
+.btn-component--primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+  transform: translateY(-1px);
+}
+
+.btn-component--primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-component--secondary {
+  background: var(--bg-column);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+}
+
+.btn-component--secondary:hover:not(:disabled) {
+  background: var(--border);
+  border-color: var(--text-muted);
+}
+
+.btn-component--danger {
+  background: #DC2626;
+  color: white;
+}
+
+.btn-component--danger:hover:not(:disabled) {
+  background: #B91C1C;
+}
+
+.btn-component--success {
+  background: #16A34A;
+  color: white;
+}
+
+.btn-component--success:hover:not(:disabled) {
+  background: #15803D;
+}
+
+.btn-component--ghost {
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.btn-component--ghost:hover:not(:disabled) {
+  background: var(--bg-column);
+  color: var(--text-primary);
+}
+
+/* Loading State */
+.btn-component--loading {
+  position: relative;
+}
+
+.btn-component__spinner {
+  animation: btnSpin 1s linear infinite;
+}
+
+@keyframes btnSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Icon */
+.btn-component__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Icon Only Button */
+.btn-component--icon-only {
+  padding: 8px;
+}
+
+.btn-component--icon-only.btn-component--sm {
+  padding: 6px;
+}
+
+.btn-component--icon-only.btn-component--lg {
+  padding: 12px;
+}

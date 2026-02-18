@@ -1,0 +1,114 @@
+/* Empty State Component */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 40px 20px;
+}
+
+/* Sizes */
+.empty-state--sm {
+  padding: 24px 16px;
+}
+
+.empty-state--sm .empty-state__icon {
+  margin-bottom: 12px;
+}
+
+.empty-state--sm .empty-state__icon svg {
+  width: 32px;
+  height: 32px;
+}
+
+.empty-state--sm .empty-state__title {
+  font-size: 14px;
+}
+
+.empty-state--sm .empty-state__description {
+  font-size: 12px;
+}
+
+.empty-state--lg {
+  padding: 60px 30px;
+}
+
+.empty-state--lg .empty-state__icon svg {
+  width: 64px;
+  height: 64px;
+}
+
+.empty-state--lg .empty-state__title {
+  font-size: 20px;
+}
+
+/* Icon */
+.empty-state__icon {
+  color: var(--text-muted);
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+/* Animated gradient background for icon */
+.empty-state__icon svg {
+  transition: transform var(--transition);
+}
+
+.empty-state:hover .empty-state__icon svg {
+  transform: scale(1.05);
+}
+
+/* Title */
+.empty-state__title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 8px;
+}
+
+/* Description */
+.empty-state__description {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin: 0 0 20px;
+  max-width: 280px;
+  line-height: 1.5;
+}
+
+/* Action */
+.empty-state__action {
+  margin-top: 4px;
+}
+
+/* Default Button Style */
+.empty-state__btn {
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  color: white;
+  background: var(--accent);
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.empty-state__btn:hover {
+  background: var(--accent-hover);
+  transform: translateY(-1px);
+}
+
+.empty-state__btn:active {
+  transform: translateY(0);
+}
+
+/* Illustration variant (for future SVG illustrations) */
+.empty-state--illustrated .empty-state__icon {
+  opacity: 1;
+}
+
+/* Dark mode adjustments */
+[data-theme="dark"] .empty-state__icon {
+  opacity: 0.4;
+}

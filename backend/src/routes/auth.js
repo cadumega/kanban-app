@@ -3,13 +3,32 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
+const rateLimit = require('express-rate-limit');
 const usersDb = require('../database/users');
+const logger = require('../config/logger');
+const { jwt: jwtConfig, rateLimit: rateLimitConfig } = require('../config/security');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'kanban-secret-key-2026';
-const JWT_EXPIRES_IN = '7d';
+const JWT_SECRET = jwtConfig.secret;
+const JWT_EXPIRES_IN = jwtConfig.expiresIn;
+
+// Rate limiter for login attempts (prevents brute force)
+const loginLimiter = rateLimit({
+  windowMs: rateLimitConfig.windowMs,
+  max: rateLimitConfig.loginMaxAttempts,
+  message: { error: 'Muitas tentativas de login. Tente novamente em 15 minutos.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res, next, options) => {
+    logger.securityEvent('rate_limit_exceeded', {
+      type: 'login',
+      email: req.body?.email
+    }, req);
+    res.status(429).json(options.message);
+  }
+});
 
 // POST /api/auth/login
-router.post('/login', (req, res) => {
+router.post('/login', loginLimiter, (req, res) => {
   try {
     const { email, password } = req.body;
 
@@ -38,6 +57,8 @@ router.post('/login', (req, res) => {
       { expiresIn: JWT_EXPIRES_IN }
     );
 
+    logger.authEvent('login_success', user.id, user.email, true);
+
     res.json({
       token,
       user: {
@@ -48,7 +69,7 @@ router.post('/login', (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Login error:', error);
+    logger.error('Login error', { error: error.message });
     res.status(500).json({ error: 'Erro ao fazer login' });
   }
 });

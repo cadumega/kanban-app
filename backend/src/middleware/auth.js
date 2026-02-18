@@ -1,6 +1,9 @@
 const jwt = require('jsonwebtoken');
-const { JWT_SECRET } = require('../routes/auth');
 const usersDb = require('../database/users');
+const logger = require('../config/logger');
+const { jwt: jwtConfig } = require('../config/security');
+
+const JWT_SECRET = jwtConfig.secret;
 
 function authMiddleware(req, res, next) {
   try {
@@ -17,10 +20,12 @@ function authMiddleware(req, res, next) {
     const user = usersDb.prepare('SELECT id, email, role, active FROM users WHERE id = ?').get(decoded.id);
 
     if (!user) {
+      logger.securityEvent('invalid_token_user_not_found', { userId: decoded.id }, req);
       return res.status(401).json({ error: 'Usuário não encontrado' });
     }
 
     if (!user.active) {
+      logger.securityEvent('inactive_user_access_attempt', { userId: user.id, email: user.email }, req);
       return res.status(401).json({ error: 'Usuário desativado' });
     }
 
@@ -34,12 +39,13 @@ function authMiddleware(req, res, next) {
     next();
   } catch (error) {
     if (error.name === 'JsonWebTokenError') {
+      logger.securityEvent('invalid_jwt_token', { error: error.message }, req);
       return res.status(401).json({ error: 'Token inválido' });
     }
     if (error.name === 'TokenExpiredError') {
       return res.status(401).json({ error: 'Token expirado' });
     }
-    console.error('Auth middleware error:', error);
+    logger.error('Auth middleware error', { error: error.message });
     res.status(500).json({ error: 'Erro de autenticação' });
   }
 }

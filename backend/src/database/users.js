@@ -2,6 +2,8 @@ const Database = require('better-sqlite3');
 const path = require('path');
 const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
+const logger = require('../config/logger');
+const { master: masterConfig, isProduction } = require('../config/security');
 
 const dbPath = path.join(__dirname, '../../data/users.db');
 const db = new Database(dbPath);
@@ -22,17 +24,40 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 `);
 
-// Create master user if not exists
-const masterEmail = 'cadumega@outlook.com';
-const masterExists = db.prepare('SELECT id FROM users WHERE email = ?').get(masterEmail);
+// Create master user if not exists (using environment variables)
+const createMasterUser = () => {
+  // In production, require environment variables
+  if (isProduction && (!masterConfig.email || !masterConfig.password)) {
+    logger.error('Master user credentials not configured. Set MASTER_EMAIL and MASTER_PASSWORD.');
+    return;
+  }
 
-if (!masterExists) {
-  const passwordHash = bcrypt.hashSync('cadu@2026', 10);
-  db.prepare(`
-    INSERT INTO users (id, email, password_hash, name, role)
-    VALUES (?, ?, ?, ?, ?)
-  `).run(uuidv4(), masterEmail, passwordHash, 'Carlos', 'master');
-  console.log('Master user created: cadumega@outlook.com');
-}
+  // Use environment variables or fallback for development only
+  const masterEmail = masterConfig.email || (isProduction ? null : 'admin@localhost');
+  const masterPassword = masterConfig.password || (isProduction ? null : 'change-me-immediately');
+  const masterName = masterConfig.name || 'Admin';
+
+  if (!masterEmail || !masterPassword) {
+    logger.warn('Skipping master user creation - no credentials provided');
+    return;
+  }
+
+  const masterExists = db.prepare('SELECT id FROM users WHERE email = ?').get(masterEmail);
+
+  if (!masterExists) {
+    const passwordHash = bcrypt.hashSync(masterPassword, 10);
+    db.prepare(`
+      INSERT INTO users (id, email, password_hash, name, role)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(uuidv4(), masterEmail, passwordHash, masterName, 'master');
+    logger.info('Master user created', { email: masterEmail });
+
+    if (!isProduction) {
+      logger.warn('Using default master credentials - CHANGE IMMEDIATELY in production!');
+    }
+  }
+};
+
+createMasterUser();
 
 module.exports = db;

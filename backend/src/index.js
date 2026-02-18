@@ -1,5 +1,7 @@
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const path = require('path');
 
 const authRouter = require('./routes/auth');
@@ -11,17 +13,60 @@ const contactsRouter = require('./routes/contacts');
 const projectsRouter = require('./routes/projects');
 const { authMiddleware } = require('./middleware/auth');
 const { getUserDb, migrateMasterDb } = require('./database/userDb');
+const logger = require('./config/logger');
+const { cors: corsConfig, rateLimit: rateLimitConfig, master: masterConfig, isProduction } = require('./config/security');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-const isProduction = process.env.NODE_ENV === 'production';
 
-// Migrate master user's database on startup
-migrateMasterDb('cadumega@outlook.com');
+// Migrate master user's database on startup (use env var or default for dev)
+const masterEmail = masterConfig.email || (isProduction ? null : 'admin@localhost');
+if (masterEmail) {
+  migrateMasterDb(masterEmail);
+}
 
-// Middleware
-app.use(cors());
-app.use(express.json());
+// Security middleware
+app.use(helmet({
+  contentSecurityPolicy: isProduction ? undefined : false, // Disable CSP in dev for hot reload
+  crossOriginEmbedderPolicy: false // Allow embedding images
+}));
+
+// CORS configuration
+app.use(cors({
+  origin: isProduction ? corsConfig.allowedOrigins : true, // Allow all in dev
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+// Global rate limiting (all routes)
+const globalLimiter = rateLimit({
+  windowMs: rateLimitConfig.windowMs,
+  max: rateLimitConfig.maxRequests,
+  message: { error: 'Muitas requisições. Tente novamente mais tarde.' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+app.use(globalLimiter);
+
+// Body parsing
+app.use(express.json({ limit: '10mb' }));
+
+// Request logging
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    if (req.path !== '/api/health') { // Don't log health checks
+      logger.info(`${req.method} ${req.path}`, {
+        status: res.statusCode,
+        duration: `${duration}ms`,
+        ip: req.ip
+      });
+    }
+  });
+  next();
+});
 
 // Public routes (no auth required)
 app.use('/api/auth', authRouter);
@@ -52,7 +97,12 @@ app.use('/api/projects', authMiddleware, injectUserDb, projectsRouter);
 
 // Error handling for API routes
 app.use('/api', (err, req, res, next) => {
-  console.error(err.stack);
+  logger.error('Unhandled error', {
+    error: err.message,
+    stack: err.stack,
+    path: req.path,
+    method: req.method
+  });
   res.status(500).json({ error: 'Algo deu errado!' });
 });
 
@@ -68,8 +118,8 @@ if (isProduction) {
 }
 
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-  if (isProduction) {
-    console.log('Running in production mode with static file serving');
-  }
+  logger.info(`Server started on port ${PORT}`, {
+    environment: isProduction ? 'production' : 'development',
+    nodeVersion: process.version
+  });
 });

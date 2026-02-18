@@ -246,11 +246,29 @@ router.delete('/:contactId/notes/:noteId', (req, res) => {
   res.status(204).send();
 });
 
-// Serve uploaded images
+// Serve uploaded images (with path traversal protection)
 router.get('/images/:filename', (req, res) => {
   const { filename } = req.params;
+
+  // Sanitize filename to prevent path traversal attacks
+  // Only allow alphanumeric, dash, underscore, dot (for extension)
+  const sanitizedFilename = path.basename(filename);
+
+  // Extra validation: reject any path components
+  if (filename !== sanitizedFilename || filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+    return res.status(400).json({ error: 'Nome de arquivo inválido' });
+  }
+
   const imagesDir = getUserImagesDir(req.user.email);
-  const imagePath = path.join(imagesDir, filename);
+  const imagePath = path.join(imagesDir, sanitizedFilename);
+
+  // Verify the resolved path is still within the images directory
+  const resolvedPath = path.resolve(imagePath);
+  const resolvedImagesDir = path.resolve(imagesDir);
+
+  if (!resolvedPath.startsWith(resolvedImagesDir)) {
+    return res.status(400).json({ error: 'Acesso negado' });
+  }
 
   if (!fs.existsSync(imagePath)) {
     return res.status(404).json({ error: 'Imagem não encontrada' });
