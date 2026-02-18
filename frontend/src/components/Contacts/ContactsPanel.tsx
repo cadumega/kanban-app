@@ -29,6 +29,7 @@ import {
   TrendingUp,
   Lightbulb,
   Clock,
+  RefreshCw,
 } from 'lucide-react';
 import type { Contact, ContactFollowup, ContactTag, ContactSegment } from '../../types';
 import * as api from '../../services/api';
@@ -616,12 +617,20 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
             {/* Separador visual */}
             <div className="contacts-panel__header-divider" />
 
-            {/* Import/Export */}
+            {/* Import/Export/Refresh */}
             <button onClick={() => setShowImportModal(true)} className="btn btn-secondary btn-sm" title="Importar CSV">
               <Upload size={14} />
             </button>
             <button onClick={() => handleExport(filteredContacts.length !== contacts.length)} className="btn btn-secondary btn-sm" title="Exportar CSV">
               <Download size={14} />
+            </button>
+            <button
+              onClick={() => { loadContacts(); loadPendingFollowups(); toast.success('Dados atualizados'); }}
+              className={`btn btn-secondary btn-sm ${loading ? 'btn-loading' : ''}`}
+              title="Atualizar dados"
+              disabled={loading}
+            >
+              <RefreshCw size={14} className={loading ? 'spin' : ''} />
             </button>
 
             {/* Acoes principais */}
