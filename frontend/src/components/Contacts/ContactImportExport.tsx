@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import type { Contact, ContactTag, ContactSegment } from '../../types';
 import * as api from '../../services/api';
+import { useToast } from '../shared';
 
 // ============================================
 // IMPORT MODAL
@@ -186,6 +187,7 @@ function formatPhone(phone: string): string {
 }
 
 export function ImportModal({ isOpen, onClose, onImportComplete }: ImportModalProps) {
+  const toast = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [step, setStep] = useState<'upload' | 'preview' | 'importing' | 'done'>('upload');
   const [fileName, setFileName] = useState('');
@@ -238,7 +240,7 @@ export function ImportModal({ isOpen, onClose, onImportComplete }: ImportModalPr
     if (!file) return;
 
     if (!file.name.endsWith('.csv')) {
-      alert('Por favor, selecione um arquivo CSV');
+      toast.error('Por favor, selecione um arquivo CSV');
       return;
     }
 
@@ -250,7 +252,7 @@ export function ImportModal({ isOpen, onClose, onImportComplete }: ImportModalPr
       const { headers: parsedHeaders, rows } = parseCSV(content);
 
       if (parsedHeaders.length === 0) {
-        alert('Arquivo CSV vazio ou inválido');
+        toast.error('Arquivo CSV vazio ou inválido');
         return;
       }
 
@@ -333,7 +335,7 @@ export function ImportModal({ isOpen, onClose, onImportComplete }: ImportModalPr
   const handleImport = async () => {
     const rowsToProcess = parsedData.filter(row => row.isValid && row.action !== 'skip');
     if (rowsToProcess.length === 0) {
-      alert('Nenhum contato para importar');
+      toast.warning('Nenhum contato para importar');
       return;
     }
 

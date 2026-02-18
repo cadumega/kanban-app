@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Plus, Edit2, Trash2, Check, X, LayoutDashboard } from 'lucide-react';
 import type { Board, BoardLimitInfo } from '../../services/api';
+import { ConfirmDialog, useToast } from '../shared';
 
 interface BoardSelectorProps {
   boards: Board[];
@@ -21,12 +22,14 @@ export function BoardSelector({
   onUpdateBoard,
   onDeleteBoard,
 }: BoardSelectorProps) {
+  const toast = useToast();
   const [isOpen, setIsOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [isEditing, setIsEditing] = useState<string | null>(null);
   const [newBoardName, setNewBoardName] = useState('');
   const [editName, setEditName] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; boardId: string; boardName: string }>({ isOpen: false, boardId: '', boardName: '' });
   const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -73,11 +76,16 @@ export function BoardSelector({
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Excluir este board? Todas as colunas e tarefas serão removidas.')) return;
+  const handleDelete = (id: string, name: string) => {
+    setDeleteConfirm({ isOpen: true, boardId: id, boardName: name });
+  };
+
+  const confirmDeleteBoard = async () => {
     try {
       setError(null);
-      await onDeleteBoard(id);
+      await onDeleteBoard(deleteConfirm.boardId);
+      toast.success('Board excluído');
+      setDeleteConfirm({ isOpen: false, boardId: '', boardName: '' });
     } catch (err: any) {
       setError(err.message);
     }
@@ -150,7 +158,7 @@ export function BoardSelector({
                         <Edit2 size={14} />
                       </button>
                       {boards.length > 1 && (
-                        <button onClick={() => handleDelete(board.id)} className="board-selector__btn board-selector__btn--danger" title="Excluir">
+                        <button onClick={() => handleDelete(board.id, board.name)} className="board-selector__btn board-selector__btn--danger" title="Excluir">
                           <Trash2 size={14} />
                         </button>
                       )}
@@ -206,6 +214,16 @@ export function BoardSelector({
           )}
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={deleteConfirm.isOpen}
+        title="Excluir board?"
+        message={`O board "${deleteConfirm.boardName}" e todas as colunas e tarefas serão excluídos permanentemente.`}
+        variant="danger"
+        confirmLabel="Excluir"
+        onConfirm={confirmDeleteBoard}
+        onCancel={() => setDeleteConfirm({ isOpen: false, boardId: '', boardName: '' })}
+      />
     </div>
   );
 }

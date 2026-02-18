@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, Plus, Trash2, Edit2, Check, Loader2, UserPlus, Eye, EyeOff, ToggleLeft, ToggleRight } from 'lucide-react';
 import { getUsers, createUser, updateUser, deleteUser } from '../../services/api';
+import { ConfirmDialog, useToast } from '../shared';
 import type { User } from '../../types';
 import './AdminPanel.css';
 
@@ -16,6 +17,7 @@ interface NewUserForm {
 }
 
 export function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
+  const toast = useToast();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -27,6 +29,7 @@ export function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
   const [editPassword, setEditPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showEditPassword, setShowEditPassword] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; user: User | null }>({ isOpen: false, user: null });
 
   useEffect(() => {
     if (isOpen) {
@@ -100,13 +103,17 @@ export function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
     }
   };
 
-  const handleDeleteUser = async (user: User) => {
-    if (!confirm(`Excluir usuário "${user.email}"? Esta ação não pode ser desfeita.`)) {
-      return;
-    }
+  const handleDeleteUser = (user: User) => {
+    setDeleteConfirm({ isOpen: true, user });
+  };
+
+  const confirmDeleteUser = async () => {
+    if (!deleteConfirm.user) return;
     try {
-      await deleteUser(user.id);
-      setUsers(users.filter(u => u.id !== user.id));
+      await deleteUser(deleteConfirm.user.id);
+      setUsers(users.filter(u => u.id !== deleteConfirm.user!.id));
+      toast.success('Usuário excluído');
+      setDeleteConfirm({ isOpen: false, user: null });
     } catch (err: any) {
       setError(err.response?.data?.error || 'Erro ao excluir usuário');
     }
@@ -250,6 +257,16 @@ export function AdminPanel({ isOpen, onClose }: AdminPanelProps) {
             </div>
           )}
         </div>
+
+        <ConfirmDialog
+          isOpen={deleteConfirm.isOpen}
+          title="Excluir usuário?"
+          message={`O usuário "${deleteConfirm.user?.email}" será excluído permanentemente. Esta ação não pode ser desfeita.`}
+          variant="danger"
+          confirmLabel="Excluir"
+          onConfirm={confirmDeleteUser}
+          onCancel={() => setDeleteConfirm({ isOpen: false, user: null })}
+        />
       </div>
     </div>
   );

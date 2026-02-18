@@ -3,6 +3,7 @@ import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { Plus, MoreHorizontal, Pencil, Trash2, X, Check } from 'lucide-react';
 import { TaskCard } from '../TaskCard/TaskCard';
+import { ConfirmDialog, useToast } from '../shared';
 import type { Column as ColumnType, Task } from '../../types';
 import './Column.css';
 
@@ -31,9 +32,11 @@ export function Column({
   onDeleteColumn,
   onToggleFocus,
 }: ColumnProps) {
+  const toast = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(column.title);
   const [showMenu, setShowMenu] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const { setNodeRef, isOver } = useDroppable({
     id: column.id,
@@ -182,9 +185,7 @@ export function Column({
                   </button>
                   <button
                     onClick={() => {
-                      if (confirm(`Excluir coluna "${column.title}" e todas as tarefas?`)) {
-                        onDeleteColumn(column.id);
-                      }
+                      setShowDeleteConfirm(true);
                       setShowMenu(false);
                     }}
                     className="column__menu-item column__menu-item--danger"
@@ -284,6 +285,20 @@ export function Column({
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        title="Excluir coluna?"
+        message={`A coluna "${column.title}" e todas as ${column.tasks.length} tarefas serão excluídas permanentemente.`}
+        variant="danger"
+        confirmLabel="Excluir"
+        onConfirm={() => {
+          onDeleteColumn(column.id);
+          setShowDeleteConfirm(false);
+          toast.success('Coluna excluída');
+        }}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </div>
   );
 }

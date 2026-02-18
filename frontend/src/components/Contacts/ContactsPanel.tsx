@@ -32,6 +32,7 @@ import {
 import type { Contact, ContactFollowup, ContactTag, ContactSegment } from '../../types';
 import * as api from '../../services/api';
 import { ImportModal, exportContactsToCSV } from './ContactImportExport';
+import { ConfirmDialog, useToast } from '../shared';
 import { ContactDetailModal } from './ContactDetailModal';
 import { ReportsPanel } from './ReportsPanel';
 import { FollowupsPanel } from './FollowupsPanel';
@@ -83,9 +84,11 @@ const addDaysToDate = (days: number): string => {
 };
 
 export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
+  const toast = useToast();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // View mode
   const [viewMode, setViewMode] = useState<ViewMode>('list');
@@ -389,10 +392,12 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
     }
   };
 
-  const handleBulkDelete = async () => {
+  const handleBulkDelete = () => {
     if (selectedIds.size === 0) return;
-    if (!confirm(`Excluir ${selectedIds.size} contato(s)?`)) return;
+    setShowDeleteConfirm(true);
+  };
 
+  const confirmBulkDelete = async () => {
     try {
       const promises = Array.from(selectedIds).map(id =>
         api.deleteContact(id)
@@ -402,13 +407,16 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
       setContacts(prev => prev.filter(c => !selectedIds.has(c.id)));
       setSelectedIds(new Set());
       setShowBulkActions(false);
+      toast.success(`${selectedIds.size} contato(s) excluído(s)`);
 
       if (detailContact && selectedIds.has(detailContact.id)) {
         setDetailContact(null);
       }
     } catch (err) {
       console.error('Erro ao excluir contatos em lote:', err);
+      toast.error('Erro ao excluir contatos');
     }
+    setShowDeleteConfirm(false);
   };
 
   // Drag and drop for Kanban
@@ -1110,6 +1118,16 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
             setShowInsightsPanel(false);
           }
         }}
+      />
+
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        title="Excluir contatos?"
+        message={`${selectedIds.size} contato(s) serão excluídos permanentemente. Esta ação não pode ser desfeita.`}
+        variant="danger"
+        confirmLabel="Excluir"
+        onConfirm={confirmBulkDelete}
+        onCancel={() => setShowDeleteConfirm(false)}
       />
     </div>
   );

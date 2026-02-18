@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { X, Trash2, Lock, Unlock, User, Users, Clock, CalendarClock, Plus, Check, ListTodo, FolderKanban, ExternalLink, Edit3, Eye } from 'lucide-react';
 import type { Task, Category, Priority, CreateTaskPayload, ChecklistItem } from '../../types';
 import * as api from '../../services/api';
+import { ConfirmDialog, useToast } from '../shared';
 import './TaskModal.css';
 
 // Componente para renderizar texto com links clicáveis
@@ -96,6 +97,10 @@ export function TaskModal({
 
   // Description edit mode
   const [isEditingDescription, setIsEditingDescription] = useState(false);
+
+  // Confirm dialog and toast
+  const toast = useToast();
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
     if (task) {
@@ -219,8 +224,15 @@ export function TaskModal({
   };
 
   const handleDelete = () => {
-    if (task && confirm('Excluir esta tarefa?')) {
+    if (task) {
+      setShowDeleteConfirm(true);
+    }
+  };
+
+  const confirmDelete = () => {
+    if (task) {
       onDelete(task.id);
+      toast.success('Tarefa excluída');
       onClose();
     }
   };
@@ -631,6 +643,16 @@ export function TaskModal({
             </button>
           </div>
         </form>
+
+        <ConfirmDialog
+          isOpen={showDeleteConfirm}
+          title="Excluir tarefa?"
+          message={`A tarefa "${task?.title}" será excluída permanentemente.`}
+          variant="danger"
+          confirmLabel="Excluir"
+          onConfirm={confirmDelete}
+          onCancel={() => setShowDeleteConfirm(false)}
+        />
       </div>
     </div>
   );

@@ -12,6 +12,7 @@ import { Login } from './components/Login/Login';
 import { AdminPanel } from './components/AdminPanel/AdminPanel';
 import { useBoard } from './hooks/useBoard';
 import { api, setAuthToken, getCurrentUser, getPendingFollowups } from './services/api';
+import { useToast, ConfirmDialog } from './components/shared';
 import type { Task, CreateTaskPayload, User } from './types';
 
 function App() {
@@ -75,6 +76,7 @@ function App() {
 }
 
 function AuthenticatedApp({ user, onLogout }: { user: User; onLogout: () => void }) {
+  const toast = useToast();
   const {
     // Boards
     boards,
@@ -121,6 +123,15 @@ function AuthenticatedApp({ user, onLogout }: { user: User; onLogout: () => void
     return localStorage.getItem('darkMode') === 'true';
   });
   const [pendingFollowupsCount, setPendingFollowupsCount] = useState(0);
+
+  // Confirm dialog state
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    variant: 'danger' | 'warning' | 'info';
+    onConfirm: () => void;
+  }>({ isOpen: false, title: '', message: '', variant: 'warning', onConfirm: () => {} });
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light');
@@ -176,20 +187,30 @@ function AuthenticatedApp({ user, onLogout }: { user: User; onLogout: () => void
       const data = JSON.parse(text);
 
       if (!data.columns || !data.tasks) {
-        alert('Arquivo inválido. Deve ser um export do Kanban.');
+        toast.error('Arquivo inválido. Deve ser um export do Kanban.');
+        event.target.value = '';
         return;
       }
 
-      if (!confirm(`Importar dados?\n\nIsso vai SUBSTITUIR todos os dados atuais:\n- ${data.columns?.length || 0} colunas\n- ${data.categories?.length || 0} categorias\n- ${data.tasks?.length || 0} tarefas\n- ${data.checklists?.length || 0} itens de checklist\n- ${data.projects?.length || 0} projetos\n\nDeseja continuar?`)) {
-        return;
-      }
-
-      const response = await api.post('/tasks/import/json', data);
-      alert(`Importação concluída!\n\n${response.data.message}`);
-      window.location.reload();
+      // Show confirm dialog
+      setConfirmDialog({
+        isOpen: true,
+        title: 'Importar dados?',
+        message: `Isso vai SUBSTITUIR todos os dados atuais:\n• ${data.columns?.length || 0} colunas\n• ${data.categories?.length || 0} categorias\n• ${data.tasks?.length || 0} tarefas\n• ${data.checklists?.length || 0} itens de checklist\n• ${data.projects?.length || 0} projetos`,
+        variant: 'warning',
+        onConfirm: async () => {
+          try {
+            const response = await api.post('/tasks/import/json', data);
+            toast.success(`Importação concluída! ${response.data.message}`);
+            window.location.reload();
+          } catch (err) {
+            toast.error('Erro ao importar arquivo.');
+          }
+        },
+      });
     } catch (error) {
       console.error('Erro ao importar:', error);
-      alert('Erro ao importar arquivo. Verifique se é um JSON válido.');
+      toast.error('Erro ao importar arquivo. Verifique se é um JSON válido.');
     }
 
     // Clear input
@@ -245,9 +266,16 @@ function AuthenticatedApp({ user, onLogout }: { user: User; onLogout: () => void
   };
 
   const handleDeleteCategory = async (id: string) => {
-    if (confirm('Excluir esta categoria? As tarefas não serão excluídas.')) {
-      await removeCategory(id);
-    }
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Excluir categoria?',
+      message: 'As tarefas não serão excluídas, apenas ficarão sem categoria.',
+      variant: 'warning',
+      onConfirm: async () => {
+        await removeCategory(id);
+        toast.success('Categoria excluída');
+      },
+    });
   };
 
   if (loading) {
@@ -457,6 +485,18 @@ function AuthenticatedApp({ user, onLogout }: { user: User; onLogout: () => void
       {user.role === 'master' && (
         <AdminPanel isOpen={adminPanelOpen} onClose={() => setAdminPanelOpen(false)} />
       )}
+
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        variant={confirmDialog.variant}
+        onConfirm={() => {
+          confirmDialog.onConfirm();
+          setConfirmDialog({ ...confirmDialog, isOpen: false });
+        }}
+        onCancel={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
+      />
     </div>
   );
 }

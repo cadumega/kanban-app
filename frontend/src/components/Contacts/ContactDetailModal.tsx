@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import type { Contact, ContactFollowup, ContactTag, ContactSegment } from '../../types';
 import * as api from '../../services/api';
+import { ConfirmDialog, useToast } from '../shared';
 
 // Segment options for projects
 const SEGMENT_OPTIONS: { value: ContactSegment; label: string; color: string }[] = [
@@ -76,6 +77,10 @@ export function ContactDetailModal({
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [editNoteContent, setEditNoteContent] = useState('');
   const [savingNote, setSavingNote] = useState(false);
+
+  // Toast and confirm dialog
+  const toast = useToast();
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -174,15 +179,21 @@ export function ContactDetailModal({
     }
   };
 
-  const handleDeleteContact = async () => {
-    if (!contactData || !confirm(`Excluir ${contactData.name}?`)) return;
+  const handleDeleteContact = () => {
+    if (!contactData) return;
+    setShowDeleteConfirm(true);
+  };
 
+  const confirmDeleteContact = async () => {
+    if (!contactData) return;
     try {
       await api.deleteContact(contactData.id);
       onContactDeleted(contactData.id);
+      toast.success('Contato excluído');
       onClose();
     } catch (err) {
       console.error('Erro ao excluir contato:', err);
+      toast.error('Erro ao excluir contato');
     }
   };
 
@@ -213,7 +224,7 @@ export function ContactDetailModal({
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        alert('Imagem muito grande. Máximo 5MB.');
+        toast.error('Imagem muito grande. Máximo 5MB.');
         return;
       }
       setSelectedImage(file);
@@ -915,6 +926,16 @@ export function ContactDetailModal({
             </div>
           </div>
         )}
+
+        <ConfirmDialog
+          isOpen={showDeleteConfirm}
+          title="Excluir contato?"
+          message={`O contato "${contactData?.name}" será excluído permanentemente junto com todas as notas e follow-ups.`}
+          variant="danger"
+          confirmLabel="Excluir"
+          onConfirm={confirmDeleteContact}
+          onCancel={() => setShowDeleteConfirm(false)}
+        />
       </div>
     </div>
   );
