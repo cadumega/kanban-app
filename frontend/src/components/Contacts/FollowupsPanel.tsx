@@ -239,10 +239,10 @@ export function FollowupsPanel({ isOpen, onClose, onOpenContact }: FollowupsPane
             <button
               onClick={() => setShowDigestPanel(true)}
               className="btn btn-sm btn-secondary"
-              title="Gerar Relatório Semanal"
+              title="Gerar Briefing Semanal"
             >
               <FileText size={14} />
-              Digest
+              Briefing
             </button>
             <button onClick={onClose} className="btn btn-icon btn-ghost">
               <X size={18} />

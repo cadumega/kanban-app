@@ -601,9 +601,9 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
               <TrendingUp size={16} />
               Analytics
             </button>
-            <button onClick={() => setShowDigestPanel(true)} className="btn btn-secondary" title="Relatorio Semanal">
+            <button onClick={() => setShowDigestPanel(true)} className="btn btn-secondary" title="Briefing Semanal">
               <FileText size={16} />
-              Digest
+              Briefing
             </button>
             <button onClick={() => setShowFollowupsPanel(true)} className="btn btn-secondary" title="Calendario de Follow-ups">
               <CalendarDays size={16} />
