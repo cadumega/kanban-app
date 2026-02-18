@@ -524,8 +524,8 @@
 
 .contacts-panel__list-header-cols {
   display: grid;
-  grid-template-columns: 1.5fr 1.2fr 1fr 0.8fr 100px 100px 80px;
-  gap: 16px;
+  grid-template-columns: 1.5fr 1.2fr 1fr 0.8fr 100px 90px 75px 60px;
+  gap: 12px;
   align-items: center;
 }
 
@@ -591,8 +591,8 @@
 
 .contacts-panel__list-row-content {
   display: grid;
-  grid-template-columns: 1.5fr 1.2fr 1fr 0.8fr 100px 100px 80px;
-  gap: 16px;
+  grid-template-columns: 1.5fr 1.2fr 1fr 0.8fr 100px 90px 75px 60px;
+  gap: 12px;
   align-items: center;
   background: none;
   border: none;
@@ -673,6 +673,35 @@
   font-size: 10px;
   font-weight: 600;
   border-radius: var(--radius-sm);
+}
+
+.contacts-panel__segment-badge--clickable {
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+
+.contacts-panel__segment-badge--clickable:hover {
+  transform: scale(1.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.contacts-panel__segment-badge--active {
+  box-shadow: 0 0 0 2px currentColor;
+  transform: scale(1.05);
+}
+
+.contacts-panel__col-last-contact {
+  display: flex;
+  align-items: center;
+  min-width: 70px;
+}
+
+.contacts-panel__last-contact-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 500;
 }
 
 .contacts-panel__segment-more {
@@ -1728,6 +1757,19 @@
   .contacts-panel__kanban-column {
     flex: 0 0 220px;
     min-width: 220px;
+  }
+}
+
+@media (max-width: 1400px) {
+  .contacts-panel__list-header-cols,
+  .contacts-panel__list-row-content {
+    grid-template-columns: 1.5fr 1.2fr 1fr 0.8fr 100px 90px 60px;
+  }
+
+  /* Oculta último contato em telas médias-grandes */
+  .contacts-panel__col-last-contact,
+  .contacts-panel__list-header-cols span:nth-child(7) {
+    display: none;
   }
 }
 

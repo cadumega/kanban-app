@@ -28,6 +28,7 @@ import {
   FileText,
   TrendingUp,
   Lightbulb,
+  Clock,
 } from 'lucide-react';
 import type { Contact, ContactFollowup, ContactTag, ContactSegment } from '../../types';
 import * as api from '../../services/api';
@@ -81,6 +82,25 @@ const addDaysToDate = (days: number): string => {
   const date = new Date();
   date.setDate(date.getDate() + days);
   return date.toISOString().split('T')[0];
+};
+
+// Helper to calculate days since last contact
+const getDaysSinceLastContact = (lastContactAt: string | null | undefined): number | null => {
+  if (!lastContactAt) return null;
+  const lastDate = new Date(lastContactAt);
+  const today = new Date();
+  const diffTime = today.getTime() - lastDate.getTime();
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  return diffDays;
+};
+
+// Helper to get color based on days since last contact
+const getLastContactColor = (days: number | null): string => {
+  if (days === null) return 'var(--text-muted)';
+  if (days <= 7) return '#22C55E'; // Verde - recente
+  if (days <= 14) return '#F59E0B'; // Amarelo - atenção
+  if (days <= 30) return '#F97316'; // Laranja - precisa contato
+  return '#EF4444'; // Vermelho - urgente
 };
 
 export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
@@ -752,6 +772,7 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
                   <span>Cidade</span>
                   <span>Segmento</span>
                   <span>Etapa</span>
+                  <span>Últ. Contato</span>
                   <span>Status</span>
                 </div>
               </div>
@@ -819,8 +840,13 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
                                   return (
                                     <span
                                       key={seg}
-                                      className="contacts-panel__segment-badge"
+                                      className={`contacts-panel__segment-badge contacts-panel__segment-badge--clickable ${segmentFilter === seg ? 'contacts-panel__segment-badge--active' : ''}`}
                                       style={{ background: `${segInfo.color}20`, color: segInfo.color }}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSegmentFilter(segmentFilter === seg ? 'all' : seg);
+                                      }}
+                                      title={segmentFilter === seg ? 'Clique para remover filtro' : `Filtrar por ${segInfo.label}`}
                                     >
                                       {segInfo.label}
                                     </span>
@@ -840,6 +866,22 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
                             ) : (
                               <span className="contacts-panel__tag-badge--empty">—</span>
                             )}
+                          </span>
+                          <span className="contacts-panel__col-last-contact">
+                            {(() => {
+                              const days = getDaysSinceLastContact(contact.last_contact_at);
+                              if (days === null) return <span style={{ color: 'var(--text-muted)' }}>—</span>;
+                              return (
+                                <span
+                                  className="contacts-panel__last-contact-badge"
+                                  style={{ color: getLastContactColor(days) }}
+                                  title={contact.last_contact_at ? new Date(contact.last_contact_at).toLocaleDateString('pt-BR') : ''}
+                                >
+                                  <Clock size={12} />
+                                  {days === 0 ? 'Hoje' : days === 1 ? '1 dia' : `${days} dias`}
+                                </span>
+                              );
+                            })()}
                           </span>
                           <span className="contacts-panel__col-status">
                             {hasOverdue && (

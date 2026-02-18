@@ -42,7 +42,8 @@ router.get('/', (req, res) => {
   const db = req.db;
   const contacts = db.prepare(`
     SELECT c.*,
-      (SELECT COUNT(*) FROM contact_notes WHERE contact_id = c.id) as notes_count
+      (SELECT COUNT(*) FROM contact_notes WHERE contact_id = c.id) as notes_count,
+      (SELECT MAX(created_at) FROM contact_notes WHERE contact_id = c.id) as last_contact_at
     FROM contacts c
     ORDER BY c.name ASC
   `).all();

@@ -102,6 +102,7 @@ export interface Contact {
   valor_mensal: number;
   is_robot: number;
   notes_count?: number;
+  last_contact_at?: string | null;
   notes?: ContactNote[];
   followups?: ContactFollowup[];
   created_at: string;
