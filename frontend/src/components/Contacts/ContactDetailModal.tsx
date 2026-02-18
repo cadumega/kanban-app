@@ -78,6 +78,9 @@ export function ContactDetailModal({
   const [editNoteContent, setEditNoteContent] = useState('');
   const [savingNote, setSavingNote] = useState(false);
 
+  // Image preview modal
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+
   // Toast and confirm dialog
   const toast = useToast();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -901,7 +904,7 @@ export function ContactDetailModal({
                             <img
                               src={api.getContactImageUrl(note.image_path)}
                               alt="Imagem da nota"
-                              onClick={() => window.open(api.getContactImageUrl(note.image_path!), '_blank')}
+                              onClick={() => setPreviewImage(api.getContactImageUrl(note.image_path!))}
                             />
                           </div>
                         )}
@@ -936,6 +939,33 @@ export function ContactDetailModal({
           onConfirm={confirmDeleteContact}
           onCancel={() => setShowDeleteConfirm(false)}
         />
+
+        {/* Image Preview Modal */}
+        {previewImage && (
+          <div
+            className="image-preview-overlay"
+            onClick={() => setPreviewImage(null)}
+          >
+            <div className="image-preview-modal" onClick={(e) => e.stopPropagation()}>
+              <button
+                className="image-preview-close"
+                onClick={() => setPreviewImage(null)}
+              >
+                <X size={24} />
+              </button>
+              <img src={previewImage} alt="Preview" />
+              <a
+                href={previewImage}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="image-preview-open-new"
+              >
+                <ExternalLink size={16} />
+                Abrir em nova aba
+              </a>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
