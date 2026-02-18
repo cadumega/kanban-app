@@ -581,12 +581,45 @@ lsof -ti:3001 | xargs kill -9
 <div className="modal-overlay" onClick={(e) => { e.stopPropagation(); onClose(); }}>
 ```
 
-### Arquivos de imagem não carregam
-**Problema:** Imagens de notas não aparecem.
+### Arquivos de imagem não carregam (401 Unauthorized)
+**Problema:** Imagens de notas aparecem "quebradas" ou retornam erro 401.
 
-**Causa:** O caminho da API de imagens pode estar incorreto.
+**Causa:** Tags `<img>` não enviam o header `Authorization` automaticamente, então o endpoint protegido retorna 401.
 
-**Solução:** Verificar se a rota `/api/contacts/images/:path` está configurada corretamente no backend e se as imagens estão sendo salvas em `data/{email}/images/`.
+**Solução implementada (Fev/2026):**
+
+1. **Backend** (`middleware/auth.js`): Aceitar token via query parameter além do header:
+```javascript
+// Suporte a token via query param para requests de imagem
+const queryToken = req.query.token;
+let token;
+if (authHeader && authHeader.startsWith('Bearer ')) {
+  token = authHeader.split(' ')[1];
+} else if (queryToken) {
+  token = queryToken;
+}
+```
+
+2. **Frontend** (`services/api.ts`): Incluir token na URL das imagens:
+```typescript
+export const getContactImageUrl = (imagePath: string): string => {
+  const token = localStorage.getItem('token');
+  const baseUrl = `/api/contacts/images/${imagePath}`;
+  return token ? `${baseUrl}?token=${encodeURIComponent(token)}` : baseUrl;
+};
+```
+
+### Modal de Preview de Imagens
+Ao clicar em uma imagem no histórico de notas, abre um modal com preview ampliado em vez de abrir em nova aba.
+
+**Funcionalidades:**
+- Preview em tela cheia com fundo escuro
+- Botão X para fechar (ou clicar fora do modal)
+- Link opcional para abrir em nova aba
+- Efeito hover nas miniaturas
+
+**Componentes:** `ContactDetailModal.tsx` (estado `previewImage`)
+**CSS:** `ContactsPanel.css` (classes `.image-preview-*`)
 
 ---
 
