@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { X, FileText, Copy, Check, Calendar, Building, User, Clock, AlertTriangle, ChevronDown, ChevronRight, Send, List, Users, Download, Flame, Snowflake, Zap } from 'lucide-react';
+import { X, FileText, Copy, Check, Calendar, Building, User, Clock, AlertTriangle, ChevronDown, ChevronRight, Send, List, Users, Download, Flame, Snowflake, Zap, CalendarPlus } from 'lucide-react';
 import * as api from '../../services/api';
 import type { WeeklyDigestResponse, WeeklyDigestContact } from '../../services/api';
 import './WeeklyDigestPanel.css';
@@ -375,6 +375,83 @@ export function WeeklyDigestPanel({ isOpen, onClose }: WeeklyDigestPanelProps) {
     }
   };
 
+  // Generate Google Calendar URL for a single follow-up
+  const generateGoogleCalendarUrl = (
+    title: string,
+    date: string,
+    description: string,
+    contactName?: string,
+    company?: string
+  ) => {
+    // Format: YYYYMMDD
+    const dateFormatted = date.replace(/-/g, '');
+    // All-day event: dates are start/end (end is exclusive, so same day = next day)
+    const endDate = new Date(date);
+    endDate.setDate(endDate.getDate() + 1);
+    const endFormatted = endDate.toISOString().split('T')[0].replace(/-/g, '');
+
+    const fullTitle = `📞 ${title}${company ? ` - ${company}` : ''}`;
+    const details = [
+      contactName ? `Contato: ${contactName}` : '',
+      company ? `Empresa: ${company}` : '',
+      description ? `\nAção: ${description}` : '',
+      '\n---',
+      'Criado via Kanban CRM'
+    ].filter(Boolean).join('\n');
+
+    const params = new URLSearchParams({
+      action: 'TEMPLATE',
+      text: fullTitle,
+      dates: `${dateFormatted}/${endFormatted}`,
+      details: details,
+    });
+
+    return `https://calendar.google.com/calendar/render?${params.toString()}`;
+  };
+
+  // Add all follow-ups to Google Calendar (opens multiple tabs)
+  const handleAddAllToCalendar = () => {
+    if (!data) return;
+
+    let count = 0;
+    timelineItems.forEach((item, index) => {
+      // Limit to avoid too many tabs
+      if (count >= 10) return;
+
+      const url = generateGoogleCalendarUrl(
+        item.followup.description || 'Follow-up',
+        item.followup.date,
+        item.followup.description || '',
+        item.contact.contact_name,
+        item.contact.contact_company || undefined
+      );
+
+      // Stagger the opening to avoid popup blockers
+      setTimeout(() => {
+        window.open(url, '_blank');
+      }, index * 300);
+
+      count++;
+    });
+  };
+
+  // Add single follow-up to calendar
+  const handleAddToCalendar = (
+    date: string,
+    description: string,
+    contactName: string,
+    company?: string
+  ) => {
+    const url = generateGoogleCalendarUrl(
+      description || 'Follow-up',
+      date,
+      description,
+      contactName,
+      company
+    );
+    window.open(url, '_blank');
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -428,6 +505,15 @@ export function WeeklyDigestPanel({ isOpen, onClose }: WeeklyDigestPanelProps) {
             >
               <Download size={14} />
               PDF
+            </button>
+            <button
+              onClick={handleAddAllToCalendar}
+              className="btn btn-sm btn-calendar"
+              disabled={!data || loading || timelineItems.length === 0}
+              title={`Adicionar ${Math.min(timelineItems.length, 10)} follow-ups ao Google Calendar`}
+            >
+              <CalendarPlus size={14} />
+              Agenda
             </button>
             <button onClick={onClose} className="btn btn-icon btn-ghost">
               <X size={18} />
@@ -611,9 +697,26 @@ export function WeeklyDigestPanel({ isOpen, onClose }: WeeklyDigestPanelProps) {
                                   ))}
                                 </div>
                               )}
-                              {item.followup.description && (
-                                <div className="weekly-digest__timeline-desc">{item.followup.description}</div>
-                              )}
+                              <div className="weekly-digest__timeline-action">
+                                {item.followup.description && (
+                                  <span className="weekly-digest__timeline-desc">{item.followup.description}</span>
+                                )}
+                                <button
+                                  className="weekly-digest__calendar-btn"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleAddToCalendar(
+                                      item.followup.date,
+                                      item.followup.description || 'Follow-up',
+                                      item.contact.contact_name,
+                                      item.contact.contact_company || undefined
+                                    );
+                                  }}
+                                  title="Adicionar ao Google Calendar"
+                                >
+                                  <CalendarPlus size={12} />
+                                </button>
+                              </div>
                               {item.contact.notes.length > 0 && (
                                 <div className="weekly-digest__timeline-notes">
                                   <span className="weekly-digest__timeline-notes-label">Últimas notas:</span>
