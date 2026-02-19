@@ -409,30 +409,64 @@ export function WeeklyDigestPanel({ isOpen, onClose }: WeeklyDigestPanelProps) {
     return `https://calendar.google.com/calendar/render?${params.toString()}`;
   };
 
-  // Add all follow-ups to Google Calendar (opens multiple tabs)
-  const handleAddAllToCalendar = () => {
-    if (!data) return;
+  // Generate ICS file content for multiple events
+  const generateICSFile = (): string => {
+    if (!data) return '';
 
-    let count = 0;
-    timelineItems.forEach((item, index) => {
-      // Limit to avoid too many tabs
-      if (count >= 10) return;
+    const lines: string[] = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//Kanban CRM//Briefing Semanal//PT',
+      'CALSCALE:GREGORIAN',
+      'METHOD:PUBLISH',
+    ];
 
-      const url = generateGoogleCalendarUrl(
-        item.followup.description || 'Follow-up',
-        item.followup.date,
-        item.followup.description || '',
-        item.contact.contact_name,
-        item.contact.contact_company || undefined
-      );
+    timelineItems.forEach((item) => {
+      const dateFormatted = item.followup.date.replace(/-/g, '');
+      const endDate = new Date(item.followup.date);
+      endDate.setDate(endDate.getDate() + 1);
+      const endFormatted = endDate.toISOString().split('T')[0].replace(/-/g, '');
 
-      // Stagger the opening to avoid popup blockers
-      setTimeout(() => {
-        window.open(url, '_blank');
-      }, index * 300);
+      const title = `📞 ${item.followup.description || 'Follow-up'}${item.contact.contact_company ? ` - ${item.contact.contact_company}` : ''}`;
+      const description = [
+        `Contato: ${item.contact.contact_name}`,
+        item.contact.contact_company ? `Empresa: ${item.contact.contact_company}` : '',
+        item.followup.description ? `Ação: ${item.followup.description}` : '',
+        '',
+        'Criado via Kanban CRM'
+      ].filter(Boolean).join('\\n');
 
-      count++;
+      // Generate unique ID
+      const uid = `${item.followup.id}@kanban-crm`;
+
+      lines.push('BEGIN:VEVENT');
+      lines.push(`UID:${uid}`);
+      lines.push(`DTSTART;VALUE=DATE:${dateFormatted}`);
+      lines.push(`DTEND;VALUE=DATE:${endFormatted}`);
+      lines.push(`SUMMARY:${title.replace(/,/g, '\\,')}`);
+      lines.push(`DESCRIPTION:${description}`);
+      lines.push('END:VEVENT');
     });
+
+    lines.push('END:VCALENDAR');
+    return lines.join('\r\n');
+  };
+
+  // Download ICS file with all follow-ups
+  const handleAddAllToCalendar = () => {
+    if (!data || timelineItems.length === 0) return;
+
+    const icsContent = generateICSFile();
+    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `briefing-semanal-${new Date().toISOString().split('T')[0]}.ics`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   // Add single follow-up to calendar
@@ -510,10 +544,10 @@ export function WeeklyDigestPanel({ isOpen, onClose }: WeeklyDigestPanelProps) {
               onClick={handleAddAllToCalendar}
               className="btn btn-sm btn-calendar"
               disabled={!data || loading || timelineItems.length === 0}
-              title={`Adicionar ${Math.min(timelineItems.length, 10)} follow-ups ao Google Calendar`}
+              title={`Baixar arquivo .ics com ${timelineItems.length} follow-up(s) para importar no Google Calendar`}
             >
               <CalendarPlus size={14} />
-              Agenda
+              .ics
             </button>
             <button onClick={onClose} className="btn btn-icon btn-ghost">
               <X size={18} />
