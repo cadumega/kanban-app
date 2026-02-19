@@ -46,6 +46,7 @@ export function WeeklyDigestPanel({ isOpen, onClose }: WeeklyDigestPanelProps) {
   const [expandedSegments, setExpandedSegments] = useState<Record<string, boolean>>({});
   const [viewMode, setViewMode] = useState<ViewMode>('timeline');
   const [whatsappSent, setWhatsappSent] = useState(false);
+  const [showCalendarLinks, setShowCalendarLinks] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -409,64 +410,26 @@ export function WeeklyDigestPanel({ isOpen, onClose }: WeeklyDigestPanelProps) {
     return `https://calendar.google.com/calendar/render?${params.toString()}`;
   };
 
-  // Generate ICS file content for multiple events
-  const generateICSFile = (): string => {
-    if (!data) return '';
+  // Generate calendar links for all follow-ups
+  const calendarLinks = useMemo(() => {
+    return timelineItems.map(item => ({
+      url: generateGoogleCalendarUrl(
+        item.followup.description || 'Follow-up',
+        item.followup.date,
+        item.followup.description || '',
+        item.contact.contact_name,
+        item.contact.contact_company || undefined
+      ),
+      title: item.followup.description || 'Follow-up',
+      contact: item.contact.contact_name,
+      company: item.contact.contact_company,
+      date: item.followup.date,
+    }));
+  }, [timelineItems]);
 
-    const lines: string[] = [
-      'BEGIN:VCALENDAR',
-      'VERSION:2.0',
-      'PRODID:-//Kanban CRM//Briefing Semanal//PT',
-      'CALSCALE:GREGORIAN',
-      'METHOD:PUBLISH',
-    ];
-
-    timelineItems.forEach((item) => {
-      const dateFormatted = item.followup.date.replace(/-/g, '');
-      const endDate = new Date(item.followup.date);
-      endDate.setDate(endDate.getDate() + 1);
-      const endFormatted = endDate.toISOString().split('T')[0].replace(/-/g, '');
-
-      const title = `📞 ${item.followup.description || 'Follow-up'}${item.contact.contact_company ? ` - ${item.contact.contact_company}` : ''}`;
-      const description = [
-        `Contato: ${item.contact.contact_name}`,
-        item.contact.contact_company ? `Empresa: ${item.contact.contact_company}` : '',
-        item.followup.description ? `Ação: ${item.followup.description}` : '',
-        '',
-        'Criado via Kanban CRM'
-      ].filter(Boolean).join('\\n');
-
-      // Generate unique ID
-      const uid = `${item.followup.id}@kanban-crm`;
-
-      lines.push('BEGIN:VEVENT');
-      lines.push(`UID:${uid}`);
-      lines.push(`DTSTART;VALUE=DATE:${dateFormatted}`);
-      lines.push(`DTEND;VALUE=DATE:${endFormatted}`);
-      lines.push(`SUMMARY:${title.replace(/,/g, '\\,')}`);
-      lines.push(`DESCRIPTION:${description}`);
-      lines.push('END:VEVENT');
-    });
-
-    lines.push('END:VCALENDAR');
-    return lines.join('\r\n');
-  };
-
-  // Download ICS file with all follow-ups
+  // Show modal with calendar links
   const handleAddAllToCalendar = () => {
-    if (!data || timelineItems.length === 0) return;
-
-    const icsContent = generateICSFile();
-    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `briefing-semanal-${new Date().toISOString().split('T')[0]}.ics`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    setShowCalendarLinks(true);
   };
 
   // Add single follow-up to calendar
@@ -544,10 +507,10 @@ export function WeeklyDigestPanel({ isOpen, onClose }: WeeklyDigestPanelProps) {
               onClick={handleAddAllToCalendar}
               className="btn btn-sm btn-calendar"
               disabled={!data || loading || timelineItems.length === 0}
-              title={`Baixar arquivo .ics com ${timelineItems.length} follow-up(s) para importar no Google Calendar`}
+              title="Ver links para adicionar ao Google Calendar"
             >
               <CalendarPlus size={14} />
-              .ics
+              Agenda
             </button>
             <button onClick={onClose} className="btn btn-icon btn-ghost">
               <X size={18} />
@@ -802,6 +765,46 @@ export function WeeklyDigestPanel({ isOpen, onClose }: WeeklyDigestPanelProps) {
             </>
           )}
         </div>
+
+        {/* Calendar Links Modal */}
+        {showCalendarLinks && (
+          <div className="calendar-links-overlay" onClick={() => setShowCalendarLinks(false)}>
+            <div className="calendar-links-modal" onClick={e => e.stopPropagation()}>
+              <div className="calendar-links-header">
+                <h3>
+                  <CalendarPlus size={18} />
+                  Adicionar ao Google Calendar
+                </h3>
+                <button onClick={() => setShowCalendarLinks(false)} className="btn btn-icon btn-ghost">
+                  <X size={18} />
+                </button>
+              </div>
+              <p className="calendar-links-hint">Clique em cada item para adicionar ao seu calendário:</p>
+              <div className="calendar-links-list">
+                {calendarLinks.map((link, idx) => (
+                  <a
+                    key={idx}
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="calendar-link-item"
+                  >
+                    <div className="calendar-link-date">
+                      {new Date(link.date + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                    </div>
+                    <div className="calendar-link-info">
+                      <span className="calendar-link-title">{link.title}</span>
+                      <span className="calendar-link-contact">
+                        {link.contact}{link.company ? ` @ ${link.company}` : ''}
+                      </span>
+                    </div>
+                    <CalendarPlus size={16} />
+                  </a>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
