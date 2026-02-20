@@ -452,7 +452,7 @@ export function WeeklyDigestPanel({ isOpen, onClose }: WeeklyDigestPanelProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="weekly-digest-overlay" onClick={onClose}>
+    <div className="weekly-digest-overlay" onClick={(e) => { e.stopPropagation(); onClose(); }}>
       <div className="weekly-digest-panel" onClick={e => e.stopPropagation()}>
         <div className="weekly-digest__header">
           <h2>

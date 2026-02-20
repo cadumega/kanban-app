@@ -103,7 +103,7 @@ export function AnalyticsDashboard({ isOpen, onClose }: AnalyticsDashboardProps)
   if (!isOpen) return null;
 
   return (
-    <div className="analytics-overlay" onClick={onClose}>
+    <div className="analytics-overlay" onClick={(e) => { e.stopPropagation(); onClose(); }}>
       <div className="analytics-dashboard" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="analytics__header">

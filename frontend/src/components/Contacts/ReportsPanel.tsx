@@ -138,7 +138,7 @@ export function ReportsPanel({ isOpen, onClose }: ReportsPanelProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="reports-panel-overlay" onClick={onClose}>
+    <div className="reports-panel-overlay" onClick={(e) => { e.stopPropagation(); onClose(); }}>
       <div className="reports-panel" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="reports-panel__header">

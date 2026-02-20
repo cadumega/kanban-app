@@ -243,7 +243,7 @@ export function InsightsPanel({ isOpen, onClose, onOpenContact }: InsightsPanelP
   if (!isOpen) return null;
 
   return (
-    <div className="insights-overlay" onClick={onClose}>
+    <div className="insights-overlay" onClick={(e) => { e.stopPropagation(); onClose(); }}>
       <div className="insights-panel" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="insights__header">

@@ -211,7 +211,7 @@ export function FollowupsPanel({ isOpen, onClose, onOpenContact }: FollowupsPane
   if (!isOpen) return null;
 
   return (
-    <div className="followups-panel-overlay" onClick={onClose}>
+    <div className="followups-panel-overlay" onClick={(e) => { e.stopPropagation(); onClose(); }}>
       <div className={`followups-panel ${viewMode === 'calendar' ? 'followups-panel--wide' : ''}`} onClick={e => e.stopPropagation()}>
         <div className="followups-panel__header">
           <h2>

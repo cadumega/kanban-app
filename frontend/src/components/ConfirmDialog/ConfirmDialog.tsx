@@ -59,7 +59,7 @@ export function ConfirmDialog({
   return (
     <div
       className="confirm-dialog-backdrop"
-      onClick={!isLoading ? onCancel : undefined}
+      onClick={(e) => { e.stopPropagation(); if (!isLoading) onCancel(); }}
       role="dialog"
       aria-modal="true"
       aria-labelledby="confirm-dialog-title"
