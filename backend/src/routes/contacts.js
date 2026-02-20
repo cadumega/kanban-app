@@ -72,7 +72,7 @@ router.get('/:id', (req, res) => {
 // Create contact
 router.post('/', (req, res) => {
   const db = req.db;
-  const { name, email, phone, phone_robot, whatsapp_redirect, company, role, tag, city, segments, valor_implementacao, valor_mensal, is_robot } = req.body;
+  const { name, email, phone, phone_robot, whatsapp_redirect, company, role, tag, city, segments, valor_implementacao, valor_mensal, is_robot, presente } = req.body;
 
   if (!name?.trim()) {
     return res.status(400).json({ error: 'Nome é obrigatório' });
@@ -81,8 +81,8 @@ router.post('/', (req, res) => {
   const id = uuidv4();
 
   db.prepare(`
-    INSERT INTO contacts (id, name, email, phone, phone_robot, whatsapp_redirect, company, role, tag, city, segments, valor_implementacao, valor_mensal, is_robot)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO contacts (id, name, email, phone, phone_robot, whatsapp_redirect, company, role, tag, city, segments, valor_implementacao, valor_mensal, is_robot, presente)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     id,
     name.trim(),
@@ -97,7 +97,8 @@ router.post('/', (req, res) => {
     segments || null,
     valor_implementacao || 0,
     valor_mensal || 0,
-    is_robot ? 1 : 0
+    is_robot ? 1 : 0,
+    presente ? 1 : 0
   );
 
   const contact = db.prepare('SELECT * FROM contacts WHERE id = ?').get(id);
@@ -108,7 +109,7 @@ router.post('/', (req, res) => {
 router.put('/:id', (req, res) => {
   const db = req.db;
   const { id } = req.params;
-  const { name, email, phone, phone_robot, whatsapp_redirect, company, role, tag, city, segments, valor_implementacao, valor_mensal, is_robot } = req.body;
+  const { name, email, phone, phone_robot, whatsapp_redirect, company, role, tag, city, segments, valor_implementacao, valor_mensal, is_robot, presente } = req.body;
 
   const existing = db.prepare('SELECT * FROM contacts WHERE id = ?').get(id);
   if (!existing) {
@@ -128,7 +129,7 @@ router.put('/:id', (req, res) => {
   db.prepare(`
     UPDATE contacts
     SET name = ?, email = ?, phone = ?, phone_robot = ?, whatsapp_redirect = ?, company = ?, role = ?, tag = ?, city = ?, segments = ?,
-        valor_implementacao = ?, valor_mensal = ?, is_robot = ?, updated_at = CURRENT_TIMESTAMP
+        valor_implementacao = ?, valor_mensal = ?, is_robot = ?, presente = ?, updated_at = CURRENT_TIMESTAMP
     WHERE id = ?
   `).run(
     name?.trim() || existing.name,
@@ -144,6 +145,7 @@ router.put('/:id', (req, res) => {
     valor_implementacao !== undefined ? valor_implementacao : existing.valor_implementacao,
     valor_mensal !== undefined ? valor_mensal : existing.valor_mensal,
     is_robot !== undefined ? (is_robot ? 1 : 0) : existing.is_robot,
+    presente !== undefined ? (presente ? 1 : 0) : existing.presente,
     id
   );
 
@@ -702,6 +704,19 @@ router.get('/reports/statistics', (req, res) => {
     SELECT COUNT(*) as count FROM contacts WHERE is_robot = 1
   `).get();
 
+  // Contacts with gift (presente)
+  const giftContacts = db.prepare(`
+    SELECT COUNT(*) as count FROM contacts WHERE presente = 1
+  `).get();
+
+  // List of gift recipients
+  const giftRecipientsList = db.prepare(`
+    SELECT id, name, company, city, segments
+    FROM contacts
+    WHERE presente = 1
+    ORDER BY company ASC, name ASC
+  `).all();
+
   // List of robot clients
   const robotClientsList = db.prepare(`
     SELECT id, name, company, city, segments, valor_implementacao, valor_mensal
@@ -758,6 +773,7 @@ router.get('/reports/statistics', (req, res) => {
     },
     totals: {
       robot_contacts: robotContacts.count,
+      gift_contacts: giftContacts.count,
       valor_implementacao: revenue.total_implementacao || 0,
       valor_mensal: revenue.total_mensal || 0,
     },
@@ -766,6 +782,7 @@ router.get('/reports/statistics', (req, res) => {
     contacts_by_city: contactsByCity,
     recent_activity: recentNotes,
     robot_clients: robotClientsList,
+    gift_recipients: giftRecipientsList,
   });
 });
 

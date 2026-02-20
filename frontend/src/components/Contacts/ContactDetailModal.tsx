@@ -20,6 +20,7 @@ import {
   Bot,
   Link,
   DollarSign,
+  Gift,
 } from 'lucide-react';
 import type { Contact, ContactFollowup, ContactTag, ContactSegment } from '../../types';
 import * as api from '../../services/api';
@@ -99,6 +100,7 @@ export function ContactDetailModal({
     valor_implementacao: 0,
     valor_mensal: 0,
     is_robot: false,
+    presente: false,
   });
 
   useEffect(() => {
@@ -159,6 +161,7 @@ export function ContactDetailModal({
         valor_implementacao: contactData.valor_implementacao || 0,
         valor_mensal: contactData.valor_mensal || 0,
         is_robot: !!contactData.is_robot,
+        presente: !!contactData.presente,
       });
       setIsEditing(true);
     }
@@ -172,6 +175,7 @@ export function ContactDetailModal({
         ...formData,
         segments: formData.segments.length > 0 ? formData.segments.join(',') : null, // Convert array to comma-separated string
         is_robot: formData.is_robot ? 1 : 0, // Convert boolean to number for API
+        presente: formData.presente ? 1 : 0, // Convert boolean to number for API
       };
       const updated = await api.updateContact(contactData.id, dataToSave);
       setContactData({ ...contactData, ...updated });
@@ -569,6 +573,19 @@ export function ContactDetailModal({
                     onChange={e => setFormData({ ...formData, is_robot: e.target.checked })}
                   />
                   <span>Ativo</span>
+                </label>
+              </div>
+
+              {/* Presente / Brinde */}
+              <div className="contact-detail-modal__section-divider contact-detail-modal__section-divider--gift">
+                <span><Gift size={14} /> Presente / Brinde</span>
+                <label className="contact-detail-modal__checkbox-inline">
+                  <input
+                    type="checkbox"
+                    checked={formData.presente}
+                    onChange={e => setFormData({ ...formData, presente: e.target.checked })}
+                  />
+                  <span>Entregue</span>
                 </label>
               </div>
 

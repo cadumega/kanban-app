@@ -26,10 +26,10 @@ import {
   BarChart3,
   CalendarDays,
   FileText,
-  TrendingUp,
-  Lightbulb,
+  Sparkles,
   Clock,
   RefreshCw,
+  Gift,
 } from 'lucide-react';
 import type { Contact, ContactFollowup, ContactTag, ContactSegment } from '../../types';
 import * as api from '../../services/api';
@@ -39,7 +39,6 @@ import { ContactDetailModal } from './ContactDetailModal';
 import { ReportsPanel } from './ReportsPanel';
 import { FollowupsPanel } from './FollowupsPanel';
 import { WeeklyDigestPanel } from './WeeklyDigestPanel';
-import { AnalyticsDashboard } from './AnalyticsDashboard';
 import { InsightsPanel } from './InsightsPanel';
 import './ContactsPanel.css';
 
@@ -155,7 +154,6 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
   const [showReportsPanel, setShowReportsPanel] = useState(false);
   const [showFollowupsPanel, setShowFollowupsPanel] = useState(false);
   const [showDigestPanel, setShowDigestPanel] = useState(false);
-  const [showAnalyticsDashboard, setShowAnalyticsDashboard] = useState(false);
   const [showInsightsPanel, setShowInsightsPanel] = useState(false);
 
   useEffect(() => {
@@ -173,13 +171,13 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
   // ESC key to close panel (only if no modal is open)
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen && !showImportModal && !showDetailModal && !showReportsPanel && !showFollowupsPanel && !showDigestPanel && !showAnalyticsDashboard && !showInsightsPanel && !isEditing) {
+      if (e.key === 'Escape' && isOpen && !showImportModal && !showDetailModal && !showReportsPanel && !showFollowupsPanel && !showDigestPanel && !showInsightsPanel && !isEditing) {
         onClose();
       }
     };
     window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
-  }, [isOpen, showImportModal, showDetailModal, showReportsPanel, showFollowupsPanel, showDigestPanel, showAnalyticsDashboard, showInsightsPanel, isEditing, onClose]);
+  }, [isOpen, showImportModal, showDetailModal, showReportsPanel, showFollowupsPanel, showDigestPanel, showInsightsPanel, isEditing, onClose]);
 
   const loadContacts = async () => {
     setLoading(true);
@@ -577,9 +575,9 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
             <button
               onClick={() => setShowFilters(!showFilters)}
               className={`contacts-panel__filter-btn ${showFilters || activeFiltersCount > 0 ? 'contacts-panel__filter-btn--active' : ''}`}
+              title="Filtros"
             >
               <Filter size={16} />
-              Filtros
               {activeFiltersCount > 0 && (
                 <span className="contacts-panel__filter-badge">{activeFiltersCount}</span>
               )}
@@ -587,23 +585,19 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
           </div>
 
           <div className="contacts-panel__header-right">
-            {/* Insights - Destaque */}
-            <button onClick={() => setShowInsightsPanel(true)} className="btn btn-insights" title="Insights e Acoes">
-              <Lightbulb size={16} />
-              Insights
+            {/* AI - Destaque */}
+            <button onClick={() => setShowInsightsPanel(true)} className="btn btn-insights" title="AI Insights e Acoes">
+              <Sparkles size={16} />
+              AI
             </button>
 
             {/* Separador visual */}
             <div className="contacts-panel__header-divider" />
 
             {/* Analises */}
-            <button onClick={() => setShowAnalyticsDashboard(true)} className="btn btn-secondary btn-analytics" title="Dashboard Analitico">
-              <TrendingUp size={16} />
-              Analytics
-            </button>
-            <button onClick={() => setShowDigestPanel(true)} className="btn btn-secondary" title="Briefing Semanal">
+            <button onClick={() => setShowDigestPanel(true)} className="btn btn-secondary" title="Agenda Semanal">
               <FileText size={16} />
-              Briefing
+              Agenda
             </button>
             <button onClick={() => setShowFollowupsPanel(true)} className="btn btn-secondary" title="Calendario de Follow-ups">
               <CalendarDays size={16} />
@@ -893,6 +887,11 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
                             })()}
                           </span>
                           <span className="contacts-panel__col-status">
+                            {contact.presente === 1 && (
+                              <span className="contacts-panel__status-icon contacts-panel__status-icon--gift" title="Recebeu presente/brinde">
+                                <Gift size={14} />
+                              </span>
+                            )}
                             {hasOverdue && (
                               <span className="contacts-panel__status-icon contacts-panel__status-icon--overdue" title="Follow-up atrasado">
                                 <AlertCircle size={14} />
@@ -1145,19 +1144,13 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
         }}
       />
 
-      {/* Weekly Digest Panel */}
+      {/* Agenda (Weekly Digest) Panel */}
       <WeeklyDigestPanel
         isOpen={showDigestPanel}
         onClose={() => setShowDigestPanel(false)}
       />
 
-      {/* Analytics Dashboard */}
-      <AnalyticsDashboard
-        isOpen={showAnalyticsDashboard}
-        onClose={() => setShowAnalyticsDashboard(false)}
-      />
-
-      {/* Insights Panel */}
+      {/* AI Insights Panel */}
       <InsightsPanel
         isOpen={showInsightsPanel}
         onClose={() => setShowInsightsPanel(false)}

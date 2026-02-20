@@ -457,7 +457,7 @@ export function WeeklyDigestPanel({ isOpen, onClose }: WeeklyDigestPanelProps) {
         <div className="weekly-digest__header">
           <h2>
             <FileText size={20} />
-            Briefing Semanal
+            Agenda Semanal
           </h2>
           <div className="weekly-digest__header-actions">
             {/* View toggle */}

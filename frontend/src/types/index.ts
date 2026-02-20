@@ -101,6 +101,7 @@ export interface Contact {
   valor_implementacao: number;
   valor_mensal: number;
   is_robot: number;
+  presente: number; // 1 = received gift/brinde
   notes_count?: number;
   last_contact_at?: string | null;
   notes?: ContactNote[];

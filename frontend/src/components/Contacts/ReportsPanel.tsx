@@ -10,6 +10,7 @@ import {
   Bell,
   MapPin,
   Loader2,
+  Gift,
 } from 'lucide-react';
 import * as api from '../../services/api';
 import './ReportsPanel.css';
@@ -29,6 +30,14 @@ interface RobotClient {
   valor_mensal: number;
 }
 
+interface GiftRecipient {
+  id: string;
+  name: string;
+  company: string | null;
+  city: string | null;
+  segments: string | null;
+}
+
 interface ReportStats {
   month: {
     notes: number;
@@ -37,6 +46,7 @@ interface ReportStats {
   };
   totals: {
     robot_contacts: number;
+    gift_contacts: number;
     valor_implementacao: number;
     valor_mensal: number;
   };
@@ -62,6 +72,7 @@ interface ReportStats {
     contact_company: string | null;
   }[];
   robot_clients: RobotClient[];
+  gift_recipients: GiftRecipient[];
 }
 
 const TAG_COLORS: Record<string, string> = {
@@ -77,6 +88,7 @@ export function ReportsPanel({ isOpen, onClose }: ReportsPanelProps) {
   const [stats, setStats] = useState<ReportStats | null>(null);
   const [loading, setLoading] = useState(false);
   const [showRobotClients, setShowRobotClients] = useState(false);
+  const [showGiftRecipients, setShowGiftRecipients] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -182,6 +194,20 @@ export function ReportsPanel({ isOpen, onClose }: ReportsPanelProps) {
                 </div>
               </div>
 
+              <div
+                className="reports-panel__card reports-panel__card--clickable"
+                onClick={() => setShowGiftRecipients(!showGiftRecipients)}
+                title="Clique para ver lista"
+              >
+                <div className="reports-panel__card-icon reports-panel__card-icon--pink">
+                  <Gift size={20} />
+                </div>
+                <div className="reports-panel__card-content">
+                  <span className="reports-panel__card-value">{stats.totals.gift_contacts}</span>
+                  <span className="reports-panel__card-label">Presentes Entregues</span>
+                </div>
+              </div>
+
               <div className="reports-panel__card">
                 <div className="reports-panel__card-icon reports-panel__card-icon--orange">
                   <DollarSign size={20} />
@@ -214,6 +240,28 @@ export function ReportsPanel({ isOpen, onClose }: ReportsPanelProps) {
                           <span className="reports-panel__robot-mensal">
                             {formatCurrency(client.valor_mensal)}/mês
                           </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Gift Recipients List */}
+            {showGiftRecipients && stats.gift_recipients && stats.gift_recipients.length > 0 && (
+              <div className="reports-panel__section reports-panel__section--highlight">
+                <h3><Gift size={16} /> Presentes Entregues ({stats.gift_recipients.length})</h3>
+                <div className="reports-panel__robot-list">
+                  {stats.gift_recipients.map(recipient => (
+                    <div key={recipient.id} className="reports-panel__robot-item">
+                      <div className="reports-panel__robot-info">
+                        <span className="reports-panel__robot-name">{recipient.name}</span>
+                        {recipient.company && (
+                          <span className="reports-panel__robot-company">{recipient.company}</span>
+                        )}
+                        {recipient.city && (
+                          <span className="reports-panel__robot-city"><MapPin size={10} /> {recipient.city}</span>
                         )}
                       </div>
                     </div>

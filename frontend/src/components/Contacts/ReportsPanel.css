@@ -64,7 +64,7 @@
 /* Summary Cards */
 .reports-panel__summary {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 16px;
 }
 
@@ -92,6 +92,7 @@
 .reports-panel__card-icon--green { background: #22C55E; }
 .reports-panel__card-icon--purple { background: #8B5CF6; }
 .reports-panel__card-icon--orange { background: #F59E0B; }
+.reports-panel__card-icon--pink { background: #EC4899; }
 
 .reports-panel__card-content {
   display: flex;

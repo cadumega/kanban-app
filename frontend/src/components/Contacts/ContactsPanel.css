@@ -736,6 +736,10 @@
   color: #F59E0B;
 }
 
+.contacts-panel__status-icon--gift {
+  color: #EC4899;
+}
+
 .contacts-panel__tag-badge--empty {
   color: var(--text-muted);
   font-size: 13px;
@@ -3378,6 +3382,10 @@
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.contact-detail-modal__section-divider--gift {
+  color: #EC4899;
 }
 
 .contact-detail-modal__checkbox-inline {

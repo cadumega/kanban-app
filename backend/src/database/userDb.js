@@ -171,6 +171,14 @@ function migrateUserDb(db) {
     console.log('Migration: Created contact_followups table');
   }
 
+  // Check if presente (gift) column exists in contacts
+  const contactsInfoPresente = db.prepare("PRAGMA table_info(contacts)").all();
+  const hasPresente = contactsInfoPresente.some(col => col.name === 'presente');
+  if (!hasPresente) {
+    db.exec('ALTER TABLE contacts ADD COLUMN presente INTEGER DEFAULT 0');
+    console.log('Migration: Added presente (gift) column to contacts');
+  }
+
   // Check if contact_tag_history table exists (for pipeline velocity tracking)
   const tagHistoryTable = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='contact_tag_history'").get();
   if (!tagHistoryTable) {
@@ -280,6 +288,7 @@ function initializeUserDb(db) {
       valor_implementacao REAL DEFAULT 0,
       valor_mensal REAL DEFAULT 0,
       is_robot INTEGER DEFAULT 0,
+      presente INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
