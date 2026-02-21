@@ -10,10 +10,7 @@ import {
   Loader2,
   Bell,
   Search,
-  Tag,
   MapPin,
-  List,
-  LayoutGrid,
   Filter,
   CheckSquare,
   Square,
@@ -31,7 +28,7 @@ import {
   RefreshCw,
   Gift,
 } from 'lucide-react';
-import type { Contact, ContactFollowup, ContactTag, ContactSegment } from '../../types';
+import type { Contact, ContactFollowup, ContactSegment } from '../../types';
 import * as api from '../../services/api';
 import { ImportModal, exportContactsToCSV } from './ContactImportExport';
 import { ConfirmDialog, useToast } from '../shared';
@@ -48,23 +45,8 @@ interface ContactsPanelProps {
   onContactCreated?: (contact: Contact) => void;
 }
 
-type ViewMode = 'list' | 'kanban';
 type SortField = 'name' | 'company' | 'city' | 'updated_at' | 'created_at';
 type SortOrder = 'asc' | 'desc';
-
-// Tag options for funnel stages
-const TAG_OPTIONS: { value: ContactTag; label: string; color: string }[] = [
-  { value: null, label: 'Sem tag', color: '#71717A' },
-  { value: 'lead', label: 'Lead', color: '#3B82F6' },
-  { value: 'qualificado', label: 'Qualificado', color: '#8B5CF6' },
-  { value: 'proposta', label: 'Proposta', color: '#F59E0B' },
-  { value: 'negociacao', label: 'Negociação', color: '#EC4899' },
-  { value: 'cliente', label: 'Cliente', color: '#22C55E' },
-  { value: 'perdido', label: 'Perdido', color: '#EF4444' },
-];
-
-// Funnel stages for Kanban (excluding null)
-const FUNNEL_STAGES = TAG_OPTIONS.filter(t => t.value !== null);
 
 // Segment options for filtering
 const SEGMENT_OPTIONS: { value: ContactSegment; label: string; color: string }[] = [
@@ -73,10 +55,6 @@ const SEGMENT_OPTIONS: { value: ContactSegment; label: string; color: string }[]
   { value: 'parceria', label: 'Parceria', color: '#22C55E' },
   { value: 'consultoria', label: 'Consultoria', color: '#F59E0B' },
 ];
-
-const getTagInfo = (tag: ContactTag) => {
-  return TAG_OPTIONS.find(t => t.value === tag) || TAG_OPTIONS[0];
-};
 
 // Helper to add days to current date
 const addDaysToDate = (days: number): string => {
@@ -111,14 +89,10 @@ export function ContactsPanel({ isOpen, onClose, onContactCreated }: ContactsPan
   const [loading, setLoading] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  // View mode
-  const [viewMode, setViewMode] = useState<ViewMode>('list');
-
   // Search and filters
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [cityFilter, setCityFilter] = useState<string>('all');
-  const [tagFilter, setTagFilter] = useState<string>('all');
   const [segmentFilter, setSegmentFilter] = useState<string>('all'); // all or specific segment
   const [followupFilter, setFollowupFilter] = useState<string>('all'); // all, has, none, overdue
   const [sortField, setSortField] = useState<SortField>('company');
@@ -127,10 +101,9 @@ export function ContactsPanel({ isOpen, onClose, onContactCreated }: ContactsPan
   // Selection for bulk actions
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [, setShowBulkActions] = useState(false);
-  const [bulkTag, setBulkTag] = useState<ContactTag>(null);
   const [bulkFollowupDays, setBulkFollowupDays] = useState<number | null>(null);
 
-  
+
   // All pending followups for filtering
   const [allPendingFollowups, setAllPendingFollowups] = useState<ContactFollowup[]>([]);
 
@@ -141,12 +114,8 @@ export function ContactsPanel({ isOpen, onClose, onContactCreated }: ContactsPan
     phone: '',
     company: '',
     role: '',
-    tag: null as ContactTag,
     city: '',
   });
-
-  // Drag state for Kanban
-  const [draggedContact, setDraggedContact] = useState<Contact | null>(null);
 
   // Modal states
   const [showImportModal, setShowImportModal] = useState(false);
@@ -253,12 +222,6 @@ export function ContactsPanel({ isOpen, onClose, onContactCreated }: ContactsPan
         if (cityFilter !== 'none' && contact.city !== cityFilter) return false;
       }
 
-      // Tag filter
-      if (tagFilter !== 'all') {
-        if (tagFilter === 'none' && contact.tag) return false;
-        if (tagFilter !== 'none' && contact.tag !== tagFilter) return false;
-      }
-
       // Segment filter
       if (segmentFilter !== 'all') {
         if (segmentFilter === 'none' && contact.segments) return false;
@@ -285,8 +248,7 @@ export function ContactsPanel({ isOpen, onClose, onContactCreated }: ContactsPan
           contact.company?.toLowerCase().includes(query) ||
           contact.email?.toLowerCase().includes(query) ||
           contact.role?.toLowerCase().includes(query) ||
-          contact.city?.toLowerCase().includes(query) ||
-          getTagInfo(contact.tag).label.toLowerCase().includes(query)
+          contact.city?.toLowerCase().includes(query)
         );
       }
 
@@ -330,18 +292,7 @@ export function ContactsPanel({ isOpen, onClose, onContactCreated }: ContactsPan
     });
 
     return result;
-  }, [contacts, cityFilter, tagFilter, segmentFilter, followupFilter, searchQuery, sortField, sortOrder, allPendingFollowups]);
-
-  // Group contacts by tag for Kanban view
-  const contactsByTag = useMemo(() => {
-    const groups: Record<string, Contact[]> = {};
-    FUNNEL_STAGES.forEach(stage => {
-      groups[stage.value!] = filteredContacts.filter(c => c.tag === stage.value);
-    });
-    // Add "Sem tag" group
-    groups['none'] = filteredContacts.filter(c => !c.tag);
-    return groups;
-  }, [filteredContacts]);
+  }, [contacts, cityFilter, segmentFilter, followupFilter, searchQuery, sortField, sortOrder, allPendingFollowups]);
 
   // Selection handlers
   const handleToggleSelect = (id: string) => {
@@ -369,28 +320,6 @@ export function ContactsPanel({ isOpen, onClose, onContactCreated }: ContactsPan
   };
 
   // Bulk actions
-  const handleBulkApplyTag = async () => {
-    if (selectedIds.size === 0) return;
-
-    try {
-      const promises = Array.from(selectedIds).map(id =>
-        api.updateContact(id, { tag: bulkTag })
-      );
-      await Promise.all(promises);
-
-      // Update local state
-      setContacts(prev =>
-        prev.map(c => selectedIds.has(c.id) ? { ...c, tag: bulkTag } : c)
-      );
-
-      setSelectedIds(new Set());
-      setShowBulkActions(false);
-      setBulkTag(null);
-    } catch (err) {
-      console.error('Erro ao aplicar tag em lote:', err);
-    }
-  };
-
   const handleBulkCreateFollowup = async () => {
     if (selectedIds.size === 0 || !bulkFollowupDays) return;
 
@@ -439,35 +368,8 @@ export function ContactsPanel({ isOpen, onClose, onContactCreated }: ContactsPan
     setShowDeleteConfirm(false);
   };
 
-  // Drag and drop for Kanban
-  const handleDragStart = (contact: Contact) => {
-    setDraggedContact(contact);
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-  };
-
-  const handleDrop = async (newTag: ContactTag) => {
-    if (!draggedContact || draggedContact.tag === newTag) {
-      setDraggedContact(null);
-      return;
-    }
-
-    try {
-      await api.updateContact(draggedContact.id, { tag: newTag });
-      setContacts(prev =>
-        prev.map(c => c.id === draggedContact.id ? { ...c, tag: newTag } : c)
-      );
-    } catch (err) {
-      console.error('Erro ao atualizar contato:', err);
-    }
-
-    setDraggedContact(null);
-  };
-
   const handleNewContact = () => {
-    setFormData({ name: '', email: '', phone: '', company: '', role: '', tag: null, city: '' });
+    setFormData({ name: '', email: '', phone: '', company: '', role: '', city: '' });
     setIsEditing(true);
     setDetailContact(null);
   };
@@ -486,7 +388,6 @@ export function ContactsPanel({ isOpen, onClose, onContactCreated }: ContactsPan
         phone: '',
         company: '',
         role: '',
-        tag: null,
         city: '',
       });
       // Call callback if provided
@@ -514,14 +415,12 @@ export function ContactsPanel({ isOpen, onClose, onContactCreated }: ContactsPan
 
   const activeFiltersCount = [
     cityFilter !== 'all',
-    tagFilter !== 'all',
     segmentFilter !== 'all',
     followupFilter !== 'all',
   ].filter(Boolean).length;
 
   const clearAllFilters = () => {
     setCityFilter('all');
-    setTagFilter('all');
     setSegmentFilter('all');
     setFollowupFilter('all');
     setSearchQuery('');
@@ -541,23 +440,6 @@ export function ContactsPanel({ isOpen, onClose, onContactCreated }: ContactsPan
           </div>
 
           <div className="contacts-panel__header-center">
-            {/* View toggle */}
-            <div className="contacts-panel__view-toggle">
-              <button
-                onClick={() => setViewMode('list')}
-                className={`contacts-panel__view-btn ${viewMode === 'list' ? 'contacts-panel__view-btn--active' : ''}`}
-                title="Lista"
-              >
-                <List size={16} />
-              </button>
-              <button
-                onClick={() => setViewMode('kanban')}
-                className={`contacts-panel__view-btn ${viewMode === 'kanban' ? 'contacts-panel__view-btn--active' : ''}`}
-                title="Kanban do Funil"
-              >
-                <LayoutGrid size={16} />
-              </button>
-            </div>
 
             {/* Search */}
             <div className="contacts-panel__search">
@@ -647,18 +529,6 @@ export function ContactsPanel({ isOpen, onClose, onContactCreated }: ContactsPan
         {showFilters && (
           <div className="contacts-panel__filters">
             <div className="contacts-panel__filters-row">
-              {/* Tag filter */}
-              <div className="contacts-panel__filter-group">
-                <label className="contacts-panel__filter-label"><Tag size={12} /> Etapa</label>
-                <select className="contacts-panel__filter-select" value={tagFilter} onChange={e => setTagFilter(e.target.value)}>
-                  <option value="all">Todas</option>
-                  <option value="none">Sem tag</option>
-                  {FUNNEL_STAGES.map(stage => (
-                    <option key={stage.value} value={stage.value!}>{stage.label}</option>
-                  ))}
-                </select>
-              </div>
-
               {/* Segment filter */}
               <div className="contacts-panel__filter-group">
                 <label className="contacts-panel__filter-label">Segmento</label>
@@ -731,17 +601,6 @@ export function ContactsPanel({ isOpen, onClose, onContactCreated }: ContactsPan
             </div>
             <div className="contacts-panel__bulk-actions">
               <div className="contacts-panel__bulk-action">
-                <select value={bulkTag || ''} onChange={e => setBulkTag(e.target.value as ContactTag || null)}>
-                  <option value="">Aplicar tag...</option>
-                  {TAG_OPTIONS.map(opt => (
-                    <option key={opt.value || 'none'} value={opt.value || ''}>{opt.label}</option>
-                  ))}
-                </select>
-                <button onClick={handleBulkApplyTag} disabled={bulkTag === null && bulkTag !== null} className="btn btn-sm btn-secondary">
-                  Aplicar
-                </button>
-              </div>
-              <div className="contacts-panel__bulk-action">
                 <select value={bulkFollowupDays || ''} onChange={e => setBulkFollowupDays(e.target.value ? Number(e.target.value) : null)}>
                   <option value="">Follow-up em...</option>
                   <option value="7">7 dias</option>
@@ -761,8 +620,7 @@ export function ContactsPanel({ isOpen, onClose, onContactCreated }: ContactsPan
         )}
 
         <div className="contacts-panel__body">
-          {/* Contacts List/Kanban */}
-          {viewMode === 'list' ? (
+          {/* Contacts List */}
             <div className="contacts-panel__list-container">
               {/* List header */}
               <div className="contacts-panel__list-header">
@@ -863,18 +721,6 @@ export function ContactsPanel({ isOpen, onClose, onContactCreated }: ContactsPan
                               </div>
                             ) : '—'}
                           </span>
-                          <span className="contacts-panel__col-tag">
-                            {contact.tag ? (
-                              <span
-                                className="contacts-panel__tag-badge"
-                                style={{ background: getTagInfo(contact.tag).color }}
-                              >
-                                {getTagInfo(contact.tag).label}
-                              </span>
-                            ) : (
-                              <span className="contacts-panel__tag-badge--empty">—</span>
-                            )}
-                          </span>
                           <span className="contacts-panel__col-last-contact">
                             {(() => {
                               const days = getDaysSinceLastContact(contact.last_contact_at);
@@ -920,63 +766,6 @@ export function ContactsPanel({ isOpen, onClose, onContactCreated }: ContactsPan
                 )}
               </div>
             </div>
-          ) : (
-            /* Kanban View */
-            <div className="contacts-panel__kanban">
-              {/* Sem tag column */}
-              <div
-                className="contacts-panel__kanban-column"
-                onDragOver={handleDragOver}
-                onDrop={() => handleDrop(null)}
-              >
-                <div className="contacts-panel__kanban-column-header" style={{ borderColor: '#71717A' }}>
-                  <span>Sem Tag</span>
-                  <span className="contacts-panel__kanban-column-count">{contactsByTag['none']?.length || 0}</span>
-                </div>
-                <div className="contacts-panel__kanban-column-body">
-                  {contactsByTag['none']?.map(contact => (
-                    <KanbanCard
-                      key={contact.id}
-                      contact={contact}
-                      onDragStart={() => handleDragStart(contact)}
-                      onClick={() => handleSelectContact(contact)}
-                      isSelected={detailContact?.id === contact.id}
-                      hasOverdue={contactHasOverdueFollowup(contact.id)}
-                      hasPending={contactHasPendingFollowup(contact.id)}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              {/* Funnel stage columns */}
-              {FUNNEL_STAGES.map(stage => (
-                <div
-                  key={stage.value}
-                  className="contacts-panel__kanban-column"
-                  onDragOver={handleDragOver}
-                  onDrop={() => handleDrop(stage.value)}
-                >
-                  <div className="contacts-panel__kanban-column-header" style={{ borderColor: stage.color }}>
-                    <span style={{ color: stage.color }}>{stage.label}</span>
-                    <span className="contacts-panel__kanban-column-count">{contactsByTag[stage.value!]?.length || 0}</span>
-                  </div>
-                  <div className="contacts-panel__kanban-column-body">
-                    {contactsByTag[stage.value!]?.map(contact => (
-                      <KanbanCard
-                        key={contact.id}
-                        contact={contact}
-                        onDragStart={() => handleDragStart(contact)}
-                        onClick={() => handleSelectContact(contact)}
-                        isSelected={detailContact?.id === contact.id}
-                        hasOverdue={contactHasOverdueFollowup(contact.id)}
-                        hasPending={contactHasPendingFollowup(contact.id)}
-                      />
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
 
           {/* New Contact Form Panel */}
           {isEditing && (
@@ -1070,27 +859,6 @@ export function ContactsPanel({ isOpen, onClose, onContactCreated }: ContactsPan
                     </datalist>
                   </div>
 
-                  <div className="form-group">
-                    <label className="label"><Tag size={14} /> Etapa do Funil</label>
-                    <div className="contacts-panel__tag-selector">
-                      {TAG_OPTIONS.map(option => (
-                        <button
-                          key={option.value || 'none'}
-                          type="button"
-                          onClick={() => setFormData({ ...formData, tag: option.value })}
-                          className={`contacts-panel__tag-option ${formData.tag === option.value ? 'contacts-panel__tag-option--active' : ''}`}
-                          style={{
-                            '--tag-color': option.color,
-                            borderColor: formData.tag === option.value ? option.color : undefined,
-                            background: formData.tag === option.value ? `${option.color}15` : undefined,
-                          } as React.CSSProperties}
-                        >
-                          <span className="contacts-panel__tag-dot" style={{ background: option.color }} />
-                          {option.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
                 </div>
 
                 <div className="contacts-panel__form-actions">
@@ -1182,46 +950,3 @@ export function ContactsPanel({ isOpen, onClose, onContactCreated }: ContactsPan
   );
 }
 
-// Kanban Card component
-interface KanbanCardProps {
-  contact: Contact;
-  onDragStart: () => void;
-  onClick: () => void;
-  isSelected: boolean;
-  hasOverdue: boolean;
-  hasPending: boolean;
-}
-
-function KanbanCard({ contact, onDragStart, onClick, isSelected, hasOverdue, hasPending }: KanbanCardProps) {
-  return (
-    <div
-      draggable
-      onDragStart={onDragStart}
-      onClick={onClick}
-      className={`contacts-panel__kanban-card ${isSelected ? 'contacts-panel__kanban-card--selected' : ''}`}
-    >
-      <div className="contacts-panel__kanban-card-header">
-        <div className="contacts-panel__kanban-card-avatar">
-          {contact.name.charAt(0).toUpperCase()}
-        </div>
-        <div className="contacts-panel__kanban-card-info">
-          <span className="contacts-panel__kanban-card-name">{contact.name}</span>
-          {contact.company && (
-            <span className="contacts-panel__kanban-card-company">{contact.company}</span>
-          )}
-        </div>
-        {(hasOverdue || hasPending) && (
-          <span className={`contacts-panel__kanban-card-indicator ${hasOverdue ? 'contacts-panel__kanban-card-indicator--overdue' : ''}`}>
-            {hasOverdue ? <AlertCircle size={12} /> : <Bell size={12} />}
-          </span>
-        )}
-      </div>
-      {contact.city && (
-        <div className="contacts-panel__kanban-card-footer">
-          <MapPin size={10} />
-          <span>{contact.city}</span>
-        </div>
-      )}
-    </div>
-  );
-}

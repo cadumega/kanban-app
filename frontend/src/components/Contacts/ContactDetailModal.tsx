@@ -22,7 +22,7 @@ import {
   DollarSign,
   Gift,
 } from 'lucide-react';
-import type { Contact, ContactFollowup, ContactTag, ContactSegment } from '../../types';
+import type { Contact, ContactFollowup, ContactSegment } from '../../types';
 import * as api from '../../services/api';
 import { ConfirmDialog, useToast } from '../shared';
 
@@ -41,20 +41,6 @@ interface ContactDetailModalProps {
   onContactUpdated: (contact: Contact) => void;
   onContactDeleted: (contactId: string) => void;
 }
-
-const TAG_OPTIONS: { value: ContactTag; label: string; color: string }[] = [
-  { value: null, label: 'Sem tag', color: '#71717A' },
-  { value: 'lead', label: 'Lead', color: '#3B82F6' },
-  { value: 'qualificado', label: 'Qualificado', color: '#8B5CF6' },
-  { value: 'proposta', label: 'Proposta', color: '#F59E0B' },
-  { value: 'negociacao', label: 'Negociação', color: '#EC4899' },
-  { value: 'cliente', label: 'Cliente', color: '#22C55E' },
-  { value: 'perdido', label: 'Perdido', color: '#EF4444' },
-];
-
-const getTagInfo = (tag: ContactTag) => {
-  return TAG_OPTIONS.find(t => t.value === tag) || TAG_OPTIONS[0];
-};
 
 export function ContactDetailModal({
   contact,
@@ -94,7 +80,6 @@ export function ContactDetailModal({
     whatsapp_redirect: '',
     company: '',
     role: '',
-    tag: null as ContactTag,
     city: '',
     segments: [] as ContactSegment[],
     valor_implementacao: 0,
@@ -155,7 +140,6 @@ export function ContactDetailModal({
         whatsapp_redirect: contactData.whatsapp_redirect || '',
         company: contactData.company || '',
         role: contactData.role || '',
-        tag: contactData.tag,
         city: contactData.city || '',
         segments: segmentsArray,
         valor_implementacao: contactData.valor_implementacao || 0,
@@ -506,29 +490,6 @@ export function ContactDetailModal({
                 </div>
               </div>
 
-              {/* Etapa do Funil */}
-              <div className="form-group">
-                <label className="label">Etapa do Funil</label>
-                <div className="contact-detail-modal__tag-selector">
-                  {TAG_OPTIONS.map(option => (
-                    <button
-                      key={option.value || 'none'}
-                      type="button"
-                      onClick={() => setFormData({ ...formData, tag: option.value })}
-                      className={`contact-detail-modal__tag-option ${formData.tag === option.value ? 'contact-detail-modal__tag-option--active' : ''}`}
-                      style={{
-                        '--tag-color': option.color,
-                        borderColor: formData.tag === option.value ? option.color : undefined,
-                        background: formData.tag === option.value ? `${option.color}15` : undefined,
-                      } as React.CSSProperties}
-                    >
-                      <span className="contact-detail-modal__tag-dot" style={{ background: option.color }} />
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
               {/* Segmentos / Projetos */}
               <div className="form-group">
                 <label className="label">Segmentos / Projetos</label>
@@ -664,14 +625,6 @@ export function ContactDetailModal({
                   <p className="contact-detail-modal__role">
                     {contactData.role} @ {contactData.company}
                   </p>
-                )}
-                {contactData.tag && (
-                  <span
-                    className="contact-detail-modal__tag-badge"
-                    style={{ background: getTagInfo(contactData.tag).color }}
-                  >
-                    {getTagInfo(contactData.tag).label}
-                  </span>
                 )}
               </div>
               <div className="contact-detail-modal__profile-actions">

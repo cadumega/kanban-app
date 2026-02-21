@@ -1570,7 +1570,11 @@ router.get('/kanban/columns', (req, res) => {
     contacts: contacts.filter(c => c.column_id === col.id)
   }));
 
-  // Also include contacts without column (assign to first column)
+  // Get all column IDs for this board
+  const columnIds = columns.map(c => c.id);
+
+  // Also include contacts without valid column (assign to first column)
+  // This includes: NULL column_id, NULL board_id, or column_id that doesn't exist
   const orphanContacts = db.prepare(`
     SELECT c.*,
       (SELECT COUNT(*) FROM contact_notes WHERE contact_id = c.id) as notes_count,
@@ -1581,7 +1585,9 @@ router.get('/kanban/columns', (req, res) => {
         c.created_at
       )) as days_since_contact
     FROM contacts c
-    WHERE c.column_id IS NULL OR c.board_id IS NULL
+    WHERE c.column_id IS NULL
+      OR c.board_id IS NULL
+      OR c.column_id NOT IN (SELECT id FROM columns)
     ORDER BY c.position ASC
   `).all();
 
