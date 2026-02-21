@@ -1,5 +1,6 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
+const { logAction } = require('../utils/audit');
 
 const router = express.Router();
 
@@ -94,6 +95,12 @@ router.post('/', (req, res) => {
     `).run(id, boardId, title, position, color);
 
     const column = db.prepare('SELECT * FROM columns WHERE id = ?').get(id);
+
+    // Audit log
+    if (req.actingUser) {
+      logAction(db, req.actingUser, 'create', 'column', id, title);
+    }
+
     res.status(201).json({ ...column, tasks: [] });
   } catch (error) {
     console.error(error);
@@ -121,6 +128,12 @@ router.put('/:id', (req, res) => {
     `).run(title, color, id);
 
     const column = db.prepare('SELECT * FROM columns WHERE id = ?').get(id);
+
+    // Audit log
+    if (req.actingUser) {
+      logAction(db, req.actingUser, 'update', 'column', id, column.title);
+    }
+
     res.json(column);
   } catch (error) {
     console.error(error);
@@ -166,6 +179,12 @@ router.delete('/:id', (req, res) => {
     }
 
     db.prepare('DELETE FROM columns WHERE id = ?').run(id);
+
+    // Audit log
+    if (req.actingUser) {
+      logAction(db, req.actingUser, 'delete', 'column', id, existing.title);
+    }
+
     res.json({ success: true });
   } catch (error) {
     console.error(error);

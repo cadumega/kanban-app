@@ -1,5 +1,6 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
+const { logAction } = require('../utils/audit');
 
 const router = express.Router();
 
@@ -84,6 +85,12 @@ router.post('/', (req, res) => {
   });
 
   const board = db.prepare('SELECT * FROM boards WHERE id = ?').get(id);
+
+  // Audit log
+  if (req.actingUser) {
+    logAction(db, req.actingUser, 'create', 'board', id, name.trim());
+  }
+
   res.status(201).json(board);
 });
 
@@ -103,6 +110,12 @@ router.put('/:id', (req, res) => {
   `).run(name?.trim() || existing.name, id);
 
   const board = db.prepare('SELECT * FROM boards WHERE id = ?').get(id);
+
+  // Audit log
+  if (req.actingUser) {
+    logAction(db, req.actingUser, 'update', 'board', id, board.name);
+  }
+
   res.json(board);
 });
 
@@ -137,8 +150,17 @@ router.delete('/:id', (req, res) => {
     return res.status(400).json({ error: 'Não é possível excluir o único board' });
   }
 
+  // Get board info for audit log
+  const board = db.prepare('SELECT name FROM boards WHERE id = ?').get(id);
+
   // Delete board (columns and tasks will cascade)
   db.prepare('DELETE FROM boards WHERE id = ?').run(id);
+
+  // Audit log
+  if (req.actingUser && board) {
+    logAction(db, req.actingUser, 'delete', 'board', id, board.name);
+  }
+
   res.status(204).send();
 });
 

@@ -102,12 +102,37 @@ export interface Contact {
   valor_mensal: number;
   is_robot: number;
   presente: number; // 1 = received gift/brinde
+  // CRM Kanban fields
+  board_id: string | null;
+  column_id: string | null;
+  position: number;
+  // Computed fields from API
   notes_count?: number;
   last_contact_at?: string | null;
+  last_note_at?: string | null;
+  days_since_contact?: number;
   notes?: ContactNote[];
   followups?: ContactFollowup[];
   created_at: string;
   updated_at: string;
+}
+
+// CRM Kanban Column with contacts
+export interface CRMColumn {
+  id: string;
+  board_id: string;
+  title: string;
+  position: number;
+  color: string;
+  created_at: string;
+  contacts: Contact[];
+}
+
+// Move contact payload
+export interface MoveContactPayload {
+  column_id: string;
+  position?: number;
+  note?: string;
 }
 
 export interface ContactNote {
@@ -151,7 +176,29 @@ export interface User {
   name: string;
   role: UserRole;
   active?: number;
+  delegated_to?: string | null;
   created_at?: string;
+}
+
+export interface AuditLog {
+  id: string;
+  user_id: string;
+  user_email: string;
+  user_name: string | null;
+  action: 'create' | 'update' | 'delete';
+  entity_type: 'contact' | 'task' | 'board' | 'column' | 'note' | 'followup';
+  entity_id: string;
+  entity_name: string | null;
+  details: string | null;
+  created_at: string;
+}
+
+export interface AuditLogsResponse {
+  logs: AuditLog[];
+  total: number;
+  users: { user_email: string; user_name: string | null }[];
+  limit: number;
+  offset: number;
 }
 
 export interface LoginResponse {

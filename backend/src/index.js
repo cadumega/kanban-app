@@ -76,10 +76,28 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Middleware to inject user's database for protected routes
+// Middleware to inject user's database for protected routes (with delegation support)
 const injectUserDb = (req, res, next) => {
   try {
-    req.db = getUserDb(req.user.email);
+    const usersDb = require('./database/users');
+
+    // Check if user is delegated to another master's workspace
+    const user = usersDb.prepare(
+      'SELECT delegated_to, name FROM users WHERE id = ?'
+    ).get(req.user.id);
+
+    // Use delegated workspace or own workspace
+    const workspaceEmail = user?.delegated_to || req.user.email;
+    req.db = getUserDb(workspaceEmail);
+
+    // Store acting user info for audit logging
+    req.actingUser = {
+      id: req.user.id,
+      email: req.user.email,
+      name: user?.name || req.user.email
+    };
+    req.workspaceOwner = workspaceEmail;
+
     next();
   } catch (error) {
     console.error('Error getting user database:', error);

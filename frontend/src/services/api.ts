@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { Column, Task, Category, CreateTaskPayload, UpdateTaskPayload, MoveTaskPayload, Contact, ContactNote, ContactFollowup, ChecklistItem, Project, User, LoginResponse } from '../types';
+import type { Column, Task, Category, CreateTaskPayload, UpdateTaskPayload, MoveTaskPayload, Contact, ContactNote, ContactFollowup, ChecklistItem, Project, User, LoginResponse, AuditLogsResponse, CRMColumn, MoveContactPayload } from '../types';
 
 // Use environment variable for API URL, fallback to relative path for dev proxy
 const API_URL = import.meta.env.VITE_API_URL || '/api';
@@ -54,13 +54,18 @@ export const getUsers = async (): Promise<User[]> => {
   return data;
 };
 
-export const createUser = async (email: string, password: string, name?: string): Promise<User> => {
-  const { data } = await api.post('/auth/users', { email, password, name });
+export const createUser = async (email: string, password: string, name?: string, shareWorkspace?: boolean): Promise<User> => {
+  const { data } = await api.post('/auth/users', { email, password, name, share_workspace: shareWorkspace });
   return data;
 };
 
-export const updateUser = async (id: string, updates: { name?: string; password?: string; active?: number }): Promise<User> => {
+export const updateUser = async (id: string, updates: { name?: string; password?: string; active?: number; share_workspace?: boolean }): Promise<User> => {
   const { data } = await api.put(`/auth/users/${id}`, updates);
+  return data;
+};
+
+export const getAuditLogs = async (filters?: { user?: string; entity_type?: string; limit?: number; offset?: number }): Promise<AuditLogsResponse> => {
+  const { data } = await api.get('/auth/audit-logs', { params: filters });
   return data;
 };
 
@@ -554,4 +559,26 @@ export interface InsightsResponse {
 export const getInsights = async (): Promise<InsightsResponse> => {
   const { data } = await api.get('/contacts/reports/insights');
   return data;
+};
+
+// ============================================
+// CRM Kanban API
+// ============================================
+
+// Get columns with contacts for Kanban view
+export const getCRMKanbanColumns = async (boardId?: string): Promise<CRMColumn[]> => {
+  const params = boardId ? { board_id: boardId } : {};
+  const { data } = await api.get('/contacts/kanban/columns', { params });
+  return data;
+};
+
+// Move contact to another column
+export const moveContact = async (contactId: string, payload: MoveContactPayload): Promise<Contact> => {
+  const { data } = await api.put(`/contacts/${contactId}/move`, payload);
+  return data;
+};
+
+// Reorder contacts within a column
+export const reorderContacts = async (columnId: string, contactIds: string[]): Promise<void> => {
+  await api.put('/contacts/kanban/reorder', { column_id: columnId, contacts: contactIds });
 };

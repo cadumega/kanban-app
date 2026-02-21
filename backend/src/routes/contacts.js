@@ -4,6 +4,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const { getUserImagesDir } = require('../database/userDb');
+const { logAction } = require('../utils/audit');
 
 const router = express.Router();
 
@@ -72,17 +73,39 @@ router.get('/:id', (req, res) => {
 // Create contact
 router.post('/', (req, res) => {
   const db = req.db;
-  const { name, email, phone, phone_robot, whatsapp_redirect, company, role, tag, city, segments, valor_implementacao, valor_mensal, is_robot, presente } = req.body;
+  const { name, email, phone, phone_robot, whatsapp_redirect, company, role, tag, city, segments, valor_implementacao, valor_mensal, is_robot, presente, board_id, column_id } = req.body;
 
   if (!name?.trim()) {
     return res.status(400).json({ error: 'Nome é obrigatório' });
   }
 
+  // Get board and column for new contact
+  let boardId = board_id;
+  let columnId = column_id;
+
+  // If not provided, get first board and first column (Lead)
+  if (!boardId) {
+    const firstBoard = db.prepare('SELECT id FROM boards ORDER BY position ASC LIMIT 1').get();
+    boardId = firstBoard?.id;
+  }
+
+  if (!columnId && boardId) {
+    const firstColumn = db.prepare('SELECT id FROM columns WHERE board_id = ? ORDER BY position ASC LIMIT 1').get(boardId);
+    columnId = firstColumn?.id;
+  }
+
+  // Get max position in column
+  let position = 0;
+  if (columnId) {
+    const maxPos = db.prepare('SELECT MAX(position) as max FROM contacts WHERE column_id = ?').get(columnId);
+    position = (maxPos.max ?? -1) + 1;
+  }
+
   const id = uuidv4();
 
   db.prepare(`
-    INSERT INTO contacts (id, name, email, phone, phone_robot, whatsapp_redirect, company, role, tag, city, segments, valor_implementacao, valor_mensal, is_robot, presente)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO contacts (id, name, email, phone, phone_robot, whatsapp_redirect, company, role, tag, city, segments, valor_implementacao, valor_mensal, is_robot, presente, board_id, column_id, position)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     id,
     name.trim(),
@@ -98,10 +121,19 @@ router.post('/', (req, res) => {
     valor_implementacao || 0,
     valor_mensal || 0,
     is_robot ? 1 : 0,
-    presente ? 1 : 0
+    presente ? 1 : 0,
+    boardId || null,
+    columnId || null,
+    position
   );
 
   const contact = db.prepare('SELECT * FROM contacts WHERE id = ?').get(id);
+
+  // Audit log
+  if (req.actingUser) {
+    logAction(db, req.actingUser, 'create', 'contact', id, name.trim());
+  }
+
   res.status(201).json(contact);
 });
 
@@ -150,6 +182,12 @@ router.put('/:id', (req, res) => {
   );
 
   const contact = db.prepare('SELECT * FROM contacts WHERE id = ?').get(id);
+
+  // Audit log
+  if (req.actingUser) {
+    logAction(db, req.actingUser, 'update', 'contact', id, contact.name);
+  }
+
   res.json(contact);
 });
 
@@ -158,9 +196,12 @@ router.delete('/:id', (req, res) => {
   const db = req.db;
   const { id } = req.params;
 
+  // Get contact info before deleting for audit log
+  const contact = db.prepare('SELECT name FROM contacts WHERE id = ?').get(id);
+
   // Get all notes with images to delete the image files
   const notes = db.prepare('SELECT image_path FROM contact_notes WHERE contact_id = ? AND image_path IS NOT NULL').all(id);
-  const imagesDir = getUserImagesDir(req.user.email);
+  const imagesDir = getUserImagesDir(req.workspaceOwner || req.user.email);
 
   notes.forEach(note => {
     if (note.image_path) {
@@ -172,6 +213,12 @@ router.delete('/:id', (req, res) => {
   });
 
   db.prepare('DELETE FROM contacts WHERE id = ?').run(id);
+
+  // Audit log
+  if (req.actingUser && contact) {
+    logAction(db, req.actingUser, 'delete', 'contact', id, contact.name);
+  }
+
   res.status(204).send();
 });
 
@@ -206,6 +253,12 @@ router.post('/:id/notes', upload.single('image'), (req, res) => {
   `).run(noteId, id, content?.trim() || null, imagePath, createdAt);
 
   const note = db.prepare('SELECT * FROM contact_notes WHERE id = ?').get(noteId);
+
+  // Audit log
+  if (req.actingUser) {
+    logAction(db, req.actingUser, 'create', 'note', noteId, contact.name, JSON.stringify({ contact_id: id }));
+  }
+
   res.status(201).json(note);
 });
 
@@ -334,6 +387,12 @@ router.post('/:id/followups', (req, res) => {
   `).run(followupId, id, date, description || '');
 
   const followup = db.prepare('SELECT * FROM contact_followups WHERE id = ?').get(followupId);
+
+  // Audit log
+  if (req.actingUser) {
+    logAction(db, req.actingUser, 'create', 'followup', followupId, contact.name, JSON.stringify({ contact_id: id, date }));
+  }
+
   res.status(201).json(followup);
 });
 
@@ -1463,6 +1522,205 @@ router.get('/reports/insights', (req, res) => {
     summary,
     insights
   });
+});
+
+// ============================================
+// CRM KANBAN - Visual Pipeline
+// ============================================
+
+// Get columns with contacts for Kanban view
+router.get('/kanban/columns', (req, res) => {
+  const db = req.db;
+  const { board_id } = req.query;
+
+  // Get board_id - use provided or first board
+  let boardId = board_id;
+  if (!boardId) {
+    const firstBoard = db.prepare('SELECT id FROM boards ORDER BY position ASC LIMIT 1').get();
+    boardId = firstBoard?.id;
+  }
+
+  if (!boardId) {
+    return res.json([]);
+  }
+
+  // Get columns for this board
+  const columns = db.prepare(`
+    SELECT * FROM columns WHERE board_id = ? ORDER BY position ASC
+  `).all(boardId);
+
+  // Get contacts for this board with additional info
+  const contacts = db.prepare(`
+    SELECT c.*,
+      (SELECT COUNT(*) FROM contact_notes WHERE contact_id = c.id) as notes_count,
+      (SELECT MAX(created_at) FROM contact_notes WHERE contact_id = c.id) as last_note_at,
+      julianday('now') - julianday(COALESCE(
+        (SELECT MAX(created_at) FROM contact_notes WHERE contact_id = c.id),
+        c.updated_at,
+        c.created_at
+      )) as days_since_contact
+    FROM contacts c
+    WHERE c.board_id = ?
+    ORDER BY c.position ASC
+  `).all(boardId);
+
+  // Group contacts by column
+  const columnsWithContacts = columns.map(col => ({
+    ...col,
+    contacts: contacts.filter(c => c.column_id === col.id)
+  }));
+
+  // Also include contacts without column (assign to first column)
+  const orphanContacts = db.prepare(`
+    SELECT c.*,
+      (SELECT COUNT(*) FROM contact_notes WHERE contact_id = c.id) as notes_count,
+      (SELECT MAX(created_at) FROM contact_notes WHERE contact_id = c.id) as last_note_at,
+      julianday('now') - julianday(COALESCE(
+        (SELECT MAX(created_at) FROM contact_notes WHERE contact_id = c.id),
+        c.updated_at,
+        c.created_at
+      )) as days_since_contact
+    FROM contacts c
+    WHERE c.column_id IS NULL OR c.board_id IS NULL
+    ORDER BY c.position ASC
+  `).all();
+
+  // Add orphan contacts to first column if any
+  if (orphanContacts.length > 0 && columnsWithContacts.length > 0) {
+    const firstColumn = columnsWithContacts[0];
+
+    // Update orphan contacts to be in first column
+    const updateStmt = db.prepare('UPDATE contacts SET board_id = ?, column_id = ? WHERE id = ?');
+    orphanContacts.forEach((contact, idx) => {
+      updateStmt.run(boardId, firstColumn.id, contact.id);
+      contact.board_id = boardId;
+      contact.column_id = firstColumn.id;
+      contact.position = firstColumn.contacts.length + idx;
+    });
+
+    // Add to response
+    columnsWithContacts[0].contacts = [...columnsWithContacts[0].contacts, ...orphanContacts];
+  }
+
+  res.json(columnsWithContacts);
+});
+
+// Move contact to another column (with optional note)
+router.put('/:id/move', (req, res) => {
+  const db = req.db;
+  const { id } = req.params;
+  const { column_id, position, note } = req.body;
+
+  const contact = db.prepare('SELECT * FROM contacts WHERE id = ?').get(id);
+  if (!contact) {
+    return res.status(404).json({ error: 'Contato não encontrado' });
+  }
+
+  const targetColumn = db.prepare('SELECT * FROM columns WHERE id = ?').get(column_id);
+  if (!targetColumn) {
+    return res.status(404).json({ error: 'Coluna não encontrada' });
+  }
+
+  const oldColumn = contact.column_id
+    ? db.prepare('SELECT title FROM columns WHERE id = ?').get(contact.column_id)
+    : null;
+
+  const transaction = db.transaction(() => {
+    // Update positions in old column (if moving from a column)
+    if (contact.column_id && contact.column_id !== column_id) {
+      db.prepare(`
+        UPDATE contacts SET position = position - 1
+        WHERE column_id = ? AND position > ?
+      `).run(contact.column_id, contact.position || 0);
+    }
+
+    // Make room in target column
+    if (position !== undefined) {
+      db.prepare(`
+        UPDATE contacts SET position = position + 1
+        WHERE column_id = ? AND position >= ?
+      `).run(column_id, position);
+    }
+
+    // Calculate new position if not provided
+    let newPosition = position;
+    if (newPosition === undefined) {
+      const maxPos = db.prepare('SELECT MAX(position) as max FROM contacts WHERE column_id = ?').get(column_id);
+      newPosition = (maxPos.max ?? -1) + 1;
+    }
+
+    // Update contact
+    db.prepare(`
+      UPDATE contacts SET
+        column_id = ?,
+        board_id = ?,
+        position = ?,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).run(column_id, targetColumn.board_id, newPosition, id);
+
+    // Add note if provided
+    if (note && note.trim()) {
+      const noteId = uuidv4();
+      const noteContent = `[Movido para ${targetColumn.title}] ${note.trim()}`;
+      db.prepare(`
+        INSERT INTO contact_notes (id, contact_id, content, created_at)
+        VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+      `).run(noteId, id, noteContent);
+    }
+
+    // Track in tag history (for analytics)
+    if (oldColumn && oldColumn.title !== targetColumn.title) {
+      const historyId = uuidv4();
+      db.prepare(`
+        INSERT INTO contact_tag_history (id, contact_id, old_tag, new_tag, changed_at)
+        VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+      `).run(historyId, id, oldColumn.title.toLowerCase(), targetColumn.title.toLowerCase());
+    }
+  });
+
+  transaction();
+
+  // Get updated contact
+  const updatedContact = db.prepare(`
+    SELECT c.*,
+      (SELECT COUNT(*) FROM contact_notes WHERE contact_id = c.id) as notes_count,
+      (SELECT MAX(created_at) FROM contact_notes WHERE contact_id = c.id) as last_note_at
+    FROM contacts c
+    WHERE c.id = ?
+  `).get(id);
+
+  // Audit log
+  if (req.actingUser) {
+    const details = JSON.stringify({
+      from_column: oldColumn?.title || 'Sem coluna',
+      to_column: targetColumn.title,
+      note: note || null
+    });
+    logAction(db, req.actingUser, 'move', 'contact', id, contact.name, details);
+  }
+
+  res.json(updatedContact);
+});
+
+// Reorder contacts within a column
+router.put('/kanban/reorder', (req, res) => {
+  const db = req.db;
+  const { column_id, contacts } = req.body;
+
+  if (!column_id || !Array.isArray(contacts)) {
+    return res.status(400).json({ error: 'column_id e contacts são obrigatórios' });
+  }
+
+  const updateStmt = db.prepare('UPDATE contacts SET position = ? WHERE id = ? AND column_id = ?');
+
+  db.transaction(() => {
+    contacts.forEach((contactId, index) => {
+      updateStmt.run(index, contactId, column_id);
+    });
+  })();
+
+  res.json({ success: true });
 });
 
 // Error handler for multer

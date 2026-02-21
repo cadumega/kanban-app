@@ -45,6 +45,7 @@ import './ContactsPanel.css';
 interface ContactsPanelProps {
   isOpen: boolean;
   onClose: () => void;
+  onContactCreated?: (contact: Contact) => void;
 }
 
 type ViewMode = 'list' | 'kanban';
@@ -103,7 +104,7 @@ const getLastContactColor = (days: number | null): string => {
   return '#EF4444'; // Vermelho - urgente
 };
 
-export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
+export function ContactsPanel({ isOpen, onClose, onContactCreated }: ContactsPanelProps) {
   const toast = useToast();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [isEditing, setIsEditing] = useState(false);
@@ -488,6 +489,10 @@ export function ContactsPanel({ isOpen, onClose }: ContactsPanelProps) {
         tag: null,
         city: '',
       });
+      // Call callback if provided
+      if (onContactCreated) {
+        onContactCreated(created);
+      }
     } catch (err) {
       console.error('Erro ao salvar contato:', err);
     }

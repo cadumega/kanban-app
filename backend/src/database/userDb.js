@@ -197,6 +197,128 @@ function migrateUserDb(db) {
     `);
     console.log('Migration: Created contact_tag_history table');
   }
+
+  // Check if audit_logs table exists
+  const auditLogsTable = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='audit_logs'").get();
+  if (!auditLogsTable) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS audit_logs (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        user_email TEXT NOT NULL,
+        user_name TEXT,
+        action TEXT NOT NULL,
+        entity_type TEXT NOT NULL,
+        entity_id TEXT NOT NULL,
+        entity_name TEXT,
+        details TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_audit_date ON audit_logs(created_at);
+      CREATE INDEX IF NOT EXISTS idx_audit_user ON audit_logs(user_email);
+      CREATE INDEX IF NOT EXISTS idx_audit_entity ON audit_logs(entity_type);
+    `);
+    console.log('Migration: Created audit_logs table');
+  }
+
+  // Check if board_id, column_id, position columns exist in contacts (CRM Kanban migration)
+  const contactsInfoKanban = db.prepare("PRAGMA table_info(contacts)").all();
+  const hasColumnId = contactsInfoKanban.some(col => col.name === 'column_id');
+  if (!hasColumnId) {
+    db.exec('ALTER TABLE contacts ADD COLUMN board_id TEXT');
+    db.exec('ALTER TABLE contacts ADD COLUMN column_id TEXT');
+    db.exec('ALTER TABLE contacts ADD COLUMN position INTEGER DEFAULT 0');
+    db.exec('CREATE INDEX IF NOT EXISTS idx_contacts_board ON contacts(board_id)');
+    db.exec('CREATE INDEX IF NOT EXISTS idx_contacts_column ON contacts(column_id)');
+    console.log('Migration: Added board_id, column_id, position columns to contacts');
+
+    // Migrate existing contacts to CRM Kanban columns
+    migrateCRMKanban(db);
+  }
+}
+
+// Migrate existing contacts to CRM Kanban structure
+function migrateCRMKanban(db) {
+  // Get or create CRM board
+  let board = db.prepare('SELECT * FROM boards ORDER BY position ASC LIMIT 1').get();
+
+  if (!board) {
+    const boardId = uuidv4();
+    db.prepare('INSERT INTO boards (id, name, position) VALUES (?, ?, ?)').run(boardId, 'CRM', 0);
+    board = { id: boardId };
+  }
+
+  // Check if we have CRM-style columns, if not create them
+  const columns = db.prepare('SELECT * FROM columns WHERE board_id = ? ORDER BY position ASC').all(board.id);
+
+  // Define CRM column mapping from tags
+  const crmColumns = [
+    { title: 'Lead', color: '#71717A', tag: 'lead' },
+    { title: 'Qualificado', color: '#6366F1', tag: 'qualificado' },
+    { title: 'Proposta', color: '#F59E0B', tag: 'proposta' },
+    { title: 'Negociação', color: '#8B5CF6', tag: 'negociacao' },
+    { title: 'Cliente', color: '#22C55E', tag: 'cliente' },
+    { title: 'Perdido', color: '#EF4444', tag: 'perdido' }
+  ];
+
+  // Create column mapping (tag -> column_id)
+  const tagToColumnMap = {};
+  let leadColumnId = null;
+
+  // Check if existing columns match CRM stages
+  const existingTitles = columns.map(c => c.title.toLowerCase());
+  const hasCRMColumns = crmColumns.some(c => existingTitles.includes(c.title.toLowerCase()));
+
+  if (!hasCRMColumns && columns.length > 0) {
+    // Existing Kanban columns exist but are not CRM-style, create new CRM columns
+    let position = columns.length;
+    for (const col of crmColumns) {
+      const colId = uuidv4();
+      db.prepare('INSERT INTO columns (id, board_id, title, position, color) VALUES (?, ?, ?, ?, ?)')
+        .run(colId, board.id, col.title, position++, col.color);
+      tagToColumnMap[col.tag] = colId;
+      if (col.tag === 'lead') leadColumnId = colId;
+    }
+  } else if (hasCRMColumns) {
+    // Map existing CRM columns to tags
+    for (const col of columns) {
+      const matchingCRM = crmColumns.find(c => c.title.toLowerCase() === col.title.toLowerCase());
+      if (matchingCRM) {
+        tagToColumnMap[matchingCRM.tag] = col.id;
+        if (matchingCRM.tag === 'lead') leadColumnId = col.id;
+      }
+    }
+  } else {
+    // No columns exist, create CRM columns
+    let position = 0;
+    for (const col of crmColumns) {
+      const colId = uuidv4();
+      db.prepare('INSERT INTO columns (id, board_id, title, position, color) VALUES (?, ?, ?, ?, ?)')
+        .run(colId, board.id, col.title, position++, col.color);
+      tagToColumnMap[col.tag] = colId;
+      if (col.tag === 'lead') leadColumnId = colId;
+    }
+  }
+
+  // If we still don't have a lead column, get the first one
+  if (!leadColumnId) {
+    const firstCol = db.prepare('SELECT id FROM columns WHERE board_id = ? ORDER BY position ASC LIMIT 1').get(board.id);
+    leadColumnId = firstCol?.id;
+  }
+
+  // Migrate existing contacts based on their tag
+  const contacts = db.prepare('SELECT id, tag FROM contacts WHERE column_id IS NULL').all();
+
+  for (let i = 0; i < contacts.length; i++) {
+    const contact = contacts[i];
+    const columnId = tagToColumnMap[contact.tag] || leadColumnId;
+
+    db.prepare('UPDATE contacts SET board_id = ?, column_id = ?, position = ? WHERE id = ?')
+      .run(board.id, columnId, i, contact.id);
+  }
+
+  console.log(`Migration: Migrated ${contacts.length} contacts to CRM Kanban`);
 }
 
 // Get user directory path
@@ -289,9 +411,17 @@ function initializeUserDb(db) {
       valor_mensal REAL DEFAULT 0,
       is_robot INTEGER DEFAULT 0,
       presente INTEGER DEFAULT 0,
+      board_id TEXT,
+      column_id TEXT,
+      position INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (board_id) REFERENCES boards(id) ON DELETE SET NULL,
+      FOREIGN KEY (column_id) REFERENCES columns(id) ON DELETE SET NULL
     );
+
+    CREATE INDEX IF NOT EXISTS idx_contacts_board ON contacts(board_id);
+    CREATE INDEX IF NOT EXISTS idx_contacts_column ON contacts(column_id);
 
     CREATE TABLE IF NOT EXISTS contact_notes (
       id TEXT PRIMARY KEY,
@@ -356,19 +486,37 @@ function initializeUserDb(db) {
     );
 
     CREATE INDEX IF NOT EXISTS idx_projects_status ON projects(status);
+
+    CREATE TABLE IF NOT EXISTS audit_logs (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      user_email TEXT NOT NULL,
+      user_name TEXT,
+      action TEXT NOT NULL,
+      entity_type TEXT NOT NULL,
+      entity_id TEXT NOT NULL,
+      entity_name TEXT,
+      details TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_audit_date ON audit_logs(created_at);
+    CREATE INDEX IF NOT EXISTS idx_audit_user ON audit_logs(user_email);
+    CREATE INDEX IF NOT EXISTS idx_audit_entity ON audit_logs(entity_type);
   `);
 
   // Seed default board
   const defaultBoardId = uuidv4();
   db.prepare('INSERT INTO boards (id, name, position) VALUES (?, ?, ?)').run(defaultBoardId, 'Principal', 0);
 
-  // Seed default columns
+  // Seed default columns (CRM Pipeline stages)
   const defaultColumns = [
-    { title: 'Backlog', color: '#71717A' },
-    { title: 'A Fazer', color: '#6366F1' },
-    { title: 'Em Progresso', color: '#F59E0B' },
-    { title: 'Concluído', color: '#22C55E' },
-    { title: 'Suporte', color: '#8B5CF6' }
+    { title: 'Lead', color: '#71717A' },
+    { title: 'Qualificado', color: '#6366F1' },
+    { title: 'Proposta', color: '#F59E0B' },
+    { title: 'Negociação', color: '#8B5CF6' },
+    { title: 'Cliente', color: '#22C55E' },
+    { title: 'Perdido', color: '#EF4444' }
   ];
 
   const insertColumn = db.prepare(

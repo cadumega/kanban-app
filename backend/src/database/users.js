@@ -17,12 +17,25 @@ db.exec(`
     name TEXT,
     role TEXT DEFAULT 'user' CHECK(role IN ('master', 'user')),
     active INTEGER DEFAULT 1,
+    delegated_to TEXT DEFAULT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 
   CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 `);
+
+// Migration: Add delegated_to column if not exists
+try {
+  const tableInfo = db.prepare("PRAGMA table_info(users)").all();
+  const hasDelegatedTo = tableInfo.some(col => col.name === 'delegated_to');
+  if (!hasDelegatedTo) {
+    db.exec('ALTER TABLE users ADD COLUMN delegated_to TEXT DEFAULT NULL');
+    logger.info('Migration: Added delegated_to column to users table');
+  }
+} catch (err) {
+  // Column might already exist
+}
 
 // Create master user if not exists (using environment variables)
 const createMasterUser = () => {

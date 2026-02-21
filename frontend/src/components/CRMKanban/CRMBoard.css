@@ -1,0 +1,61 @@
+.crm-board {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  padding: 20px;
+}
+
+.crm-board--loading {
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 12px;
+  color: var(--text-secondary);
+}
+
+.crm-board__columns {
+  display: flex;
+  gap: 16px;
+  height: 100%;
+  overflow-x: auto;
+  padding-bottom: 16px;
+}
+
+.crm-board__add-column {
+  flex: 0 0 300px;
+  min-width: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--bg-secondary);
+  border: 2px dashed var(--border);
+  border-radius: 12px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  height: fit-content;
+  min-height: 120px;
+  padding: 32px;
+}
+
+.crm-board__add-column:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-light);
+}
+
+.crm-board__drag-overlay {
+  cursor: grabbing;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

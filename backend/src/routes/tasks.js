@@ -1,5 +1,6 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
+const { logAction } = require('../utils/audit');
 
 const router = express.Router();
 
@@ -101,6 +102,11 @@ router.post('/', (req, res) => {
       WHERE t.id = ?
     `).get(id);
 
+    // Audit log
+    if (req.actingUser) {
+      logAction(db, req.actingUser, 'create', 'task', id, title);
+    }
+
     res.status(201).json(task);
   } catch (error) {
     console.error(error);
@@ -177,6 +183,11 @@ router.put('/:id', (req, res) => {
       LEFT JOIN categories c ON t.category_id = c.id
       WHERE t.id = ?
     `).get(id);
+
+    // Audit log
+    if (req.actingUser) {
+      logAction(db, req.actingUser, 'update', 'task', id, task.title);
+    }
 
     res.json(task);
   } catch (error) {
@@ -344,6 +355,11 @@ router.delete('/:id', (req, res) => {
       UPDATE tasks SET position = position - 1
       WHERE column_id = ? AND position > ?
     `).run(existing.column_id, existing.position);
+
+    // Audit log
+    if (req.actingUser) {
+      logAction(db, req.actingUser, 'delete', 'task', id, existing.title);
+    }
 
     res.json({ success: true });
   } catch (error) {

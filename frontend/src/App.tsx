@@ -1,19 +1,15 @@
 import { useState, useEffect } from 'react';
-import { Loader2, RefreshCw, PanelLeft, Users, FolderKanban, Settings, LogOut, Bell, LayoutDashboard, TrendingUp } from 'lucide-react';
-import { Board } from './components/Board/Board';
-import { BoardSelector } from './components/Board/BoardSelector';
-import { Sidebar } from './components/Sidebar/Sidebar';
-import { TaskModal } from './components/TaskModal/TaskModal';
+import { Loader2, RefreshCw, PanelLeft, Users, FolderKanban, Settings, LogOut, Bell, LayoutDashboard } from 'lucide-react';
+import { CRMBoard, useCRMKanban } from './components/CRMKanban';
 import { ContactsPanel } from './components/Contacts/ContactsPanel';
+import { ContactDetailModal } from './components/Contacts/ContactDetailModal';
 import { FollowupsPanel } from './components/Contacts/FollowupsPanel';
-import { FunnelPanel } from './components/Contacts/FunnelPanel';
 import { RoadmapPanel } from './components/Roadmap/RoadmapPanel';
 import { Login } from './components/Login/Login';
 import { AdminPanel } from './components/AdminPanel/AdminPanel';
-import { useBoard } from './hooks/useBoard';
-import { api, setAuthToken, getCurrentUser, getPendingFollowups } from './services/api';
-import { useToast, ConfirmDialog } from './components/shared';
-import type { Task, CreateTaskPayload, User } from './types';
+import { setAuthToken, getCurrentUser, getPendingFollowups } from './services/api';
+import { ConfirmDialog } from './components/shared';
+import type { User, Contact } from './types';
 
 function App() {
   const [user, setUser] = useState<User | null>(() => {
@@ -76,53 +72,36 @@ function App() {
 }
 
 function AuthenticatedApp({ user, onLogout }: { user: User; onLogout: () => void }) {
-  const toast = useToast();
+  // CRM Kanban hook
   const {
-    // Boards
-    boards,
-    currentBoard,
-    boardLimitInfo,
-    selectBoard,
-    createBoard,
-    updateBoard,
-    deleteBoard,
-    // Columns and tasks
     columns,
-    categories,
     loading,
     error,
-    filters,
-    setFilters,
-    getFilteredColumns,
+    reload,
+    moveContact,
     addColumn,
     updateColumn,
-    removeColumn,
-    addTask,
-    updateTask,
-    moveTask,
-    removeTask,
-    toggleTaskBlock,
-    toggleTaskFocus,
-    addCategory,
-    removeCategory,
-    getMonths,
-    getStats,
-    refresh,
-  } = useBoard();
+    deleteColumn,
+    updateContactInColumns,
+    removeContactFromColumns,
+    addContactToColumns,
+  } = useCRMKanban();
 
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editingTask, setEditingTask] = useState<Task | null>(null);
-  const [selectedColumnId, setSelectedColumnId] = useState<string>('');
+  // UI State
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [contactsOpen, setContactsOpen] = useState(false);
   const [followupsOpen, setFollowupsOpen] = useState(false);
   const [roadmapOpen, setRoadmapOpen] = useState(false);
-  const [funnelOpen, setFunnelOpen] = useState(false);
   const [adminPanelOpen, setAdminPanelOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(() => {
     return localStorage.getItem('darkMode') === 'true';
   });
   const [pendingFollowupsCount, setPendingFollowupsCount] = useState(0);
+
+  // Contact detail modal state
+  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  const [contactDetailOpen, setContactDetailOpen] = useState(false);
+  const [addingToColumnId, setAddingToColumnId] = useState<string | null>(null);
 
   // Confirm dialog state
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -158,155 +137,34 @@ function AuthenticatedApp({ user, onLogout }: { user: User; onLogout: () => void
     return () => clearInterval(interval);
   }, []);
 
-  const handleExportJSON = async () => {
-    const response = await api.get('/tasks/export/json');
-    const blob = new Blob([JSON.stringify(response.data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'kanban-export.json';
-    a.click();
+  // CRM Handlers
+  const handleContactClick = (contact: Contact) => {
+    setSelectedContact(contact);
+    setContactDetailOpen(true);
   };
 
-  const handleExportCSV = async () => {
-    const response = await api.get('/tasks/export/csv');
-    const blob = new Blob([response.data], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'kanban-export.csv';
-    a.click();
+  const handleAddContact = (columnId: string) => {
+    setAddingToColumnId(columnId);
+    setContactsOpen(true);
   };
 
-  const handleImportJSON = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    try {
-      const text = await file.text();
-      const data = JSON.parse(text);
-
-      if (!data.columns || !data.tasks) {
-        toast.error('Arquivo inválido. Deve ser um export do Kanban.');
-        event.target.value = '';
-        return;
-      }
-
-      // Show confirm dialog
-      setConfirmDialog({
-        isOpen: true,
-        title: 'Importar dados?',
-        message: `Isso vai SUBSTITUIR todos os dados atuais:\n• ${data.columns?.length || 0} colunas\n• ${data.categories?.length || 0} categorias\n• ${data.tasks?.length || 0} tarefas\n• ${data.checklists?.length || 0} itens de checklist\n• ${data.projects?.length || 0} projetos`,
-        variant: 'warning',
-        onConfirm: async () => {
-          try {
-            const response = await api.post('/tasks/import/json', data);
-            toast.success(`Importação concluída! ${response.data.message}`);
-            window.location.reload();
-          } catch (err) {
-            toast.error('Erro ao importar arquivo.');
-          }
-        },
-      });
-    } catch (error) {
-      console.error('Erro ao importar:', error);
-      toast.error('Erro ao importar arquivo. Verifique se é um JSON válido.');
-    }
-
-    // Clear input
-    event.target.value = '';
+  const handleContactUpdated = (updatedContact: Contact) => {
+    updateContactInColumns(updatedContact);
   };
 
-  const handleFilterByPerson = (person: string) => {
-    setFilters({ ...filters, person });
+  const handleContactDeleted = (contactId: string) => {
+    removeContactFromColumns(contactId);
+    setContactDetailOpen(false);
   };
 
-  const handleAddColumn = async () => {
-    const title = prompt('Nome da nova coluna:');
-    if (title?.trim()) {
-      await addColumn(title.trim());
-    }
+  // Calculate CRM stats
+  const crmStats = {
+    totalContacts: columns.reduce((sum, col) => sum + col.contacts.length, 0),
+    totalValue: columns.reduce(
+      (sum, col) => sum + col.contacts.reduce((s, c) => s + (c.valor_implementacao || 0) + (c.valor_mensal || 0), 0),
+      0
+    ),
   };
-
-  const handleAddTask = (columnId: string) => {
-    setSelectedColumnId(columnId);
-    setEditingTask(null);
-    setModalOpen(true);
-  };
-
-  const handleEditTask = (task: Task) => {
-    setEditingTask(task);
-    setSelectedColumnId(task.column_id);
-    setModalOpen(true);
-  };
-
-  const handleSaveTask = async (payload: CreateTaskPayload) => {
-    await addTask(payload);
-  };
-
-  const handleUpdateTask = async (id: string, updates: Partial<Task>) => {
-    await updateTask(id, updates);
-  };
-
-  const handleDeleteTask = async (id: string) => {
-    await removeTask(id);
-  };
-
-  const handleToggleBlock = async (
-    id: string,
-    blocked: boolean,
-    blocked_by?: string,
-    blocked_reason?: string
-  ) => {
-    await toggleTaskBlock(id, blocked, blocked_by, blocked_reason);
-  };
-
-  const handleAddCategory = async (name: string, color: string) => {
-    await addCategory(name, color);
-  };
-
-  const handleDeleteCategory = async (id: string) => {
-    setConfirmDialog({
-      isOpen: true,
-      title: 'Excluir categoria?',
-      message: 'As tarefas não serão excluídas, apenas ficarão sem categoria.',
-      variant: 'warning',
-      onConfirm: async () => {
-        await removeCategory(id);
-        toast.success('Categoria excluída');
-      },
-    });
-  };
-
-  if (loading) {
-    return (
-      <div className="app">
-        <div
-          style={{
-            flex: 1,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 12,
-            color: 'var(--text-secondary)',
-          }}
-        >
-          <Loader2 size={24} className="animate-spin" style={{ animation: 'spin 1s linear infinite' }} />
-          <span>Carregando...</span>
-        </div>
-        <style>{`
-          @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-          }
-        `}</style>
-      </div>
-    );
-  }
-
-  const filteredColumns = getFilteredColumns();
-  const stats = getStats();
-  const months = getMonths();
 
   const formatValue = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -319,86 +177,52 @@ function AuthenticatedApp({ user, onLogout }: { user: User; onLogout: () => void
 
   return (
     <div className="app">
-      {sidebarVisible ? (
-        <Sidebar
-          categories={categories}
-          columns={columns}
-          filters={filters}
-          months={months}
-          stats={stats}
-          darkMode={darkMode}
-          onFilterChange={setFilters}
-          onAddCategory={handleAddCategory}
-          onDeleteCategory={handleDeleteCategory}
-          onToggleDarkMode={() => setDarkMode(!darkMode)}
-          onExportJSON={handleExportJSON}
-          onExportCSV={handleExportCSV}
-          onImportJSON={handleImportJSON}
-          onToggleSidebar={() => setSidebarVisible(false)}
-          onFilterByPerson={handleFilterByPerson}
-        />
-      ) : (
-        <aside className="sidebar-collapsed">
-          <button onClick={() => setSidebarVisible(true)} className="sidebar-collapsed__btn" title="Expandir sidebar">
-            <PanelLeft size={20} />
-          </button>
-          <div className="sidebar-collapsed__divider" />
-          <button className="sidebar-collapsed__btn sidebar-collapsed__btn--active" title="Board">
-            <LayoutDashboard size={20} />
-          </button>
-          <button onClick={() => setRoadmapOpen(true)} className="sidebar-collapsed__btn" title="Roadmap">
-            <FolderKanban size={20} />
-          </button>
-          <button onClick={() => setContactsOpen(true)} className="sidebar-collapsed__btn" title="CRM">
-            <Users size={20} />
-          </button>
-          <button onClick={() => setFunnelOpen(true)} className="sidebar-collapsed__btn" title="Funil de Vendas">
-            <TrendingUp size={20} />
-          </button>
-          <button onClick={() => setFollowupsOpen(true)} className="sidebar-collapsed__btn" title="Follow-ups" style={{ position: 'relative' }}>
-            <Bell size={20} />
-            {pendingFollowupsCount > 0 && (
-              <span className="notification-badge notification-badge--small">{pendingFollowupsCount}</span>
-            )}
-          </button>
-        </aside>
-      )}
+      <aside className="sidebar-collapsed">
+        <button onClick={() => setSidebarVisible(!sidebarVisible)} className="sidebar-collapsed__btn" title="Menu">
+          <PanelLeft size={20} />
+        </button>
+        <div className="sidebar-collapsed__divider" />
+        <button className="sidebar-collapsed__btn sidebar-collapsed__btn--active" title="CRM Pipeline">
+          <LayoutDashboard size={20} />
+        </button>
+        <button onClick={() => setContactsOpen(true)} className="sidebar-collapsed__btn" title="Todos os Contatos">
+          <Users size={20} />
+        </button>
+        <button onClick={() => setRoadmapOpen(true)} className="sidebar-collapsed__btn" title="Roadmap">
+          <FolderKanban size={20} />
+        </button>
+        <button onClick={() => setFollowupsOpen(true)} className="sidebar-collapsed__btn" title="Follow-ups" style={{ position: 'relative' }}>
+          <Bell size={20} />
+          {pendingFollowupsCount > 0 && (
+            <span className="notification-badge notification-badge--small">{pendingFollowupsCount}</span>
+          )}
+        </button>
+      </aside>
 
       <div className="main-content">
         <header className="header">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              {!sidebarVisible && (
-                <button onClick={() => setSidebarVisible(true)} className="btn btn-ghost" title="Mostrar sidebar">
-                  <PanelLeft size={18} />
-                </button>
-              )}
-              <BoardSelector
-                boards={boards}
-                currentBoard={currentBoard}
-                boardLimitInfo={boardLimitInfo}
-                onSelectBoard={selectBoard}
-                onCreateBoard={createBoard}
-                onUpdateBoard={updateBoard}
-                onDeleteBoard={deleteBoard}
-              />
-              {stats.totalValue > 0 && (
+              <h1 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
+                CRM Pipeline
+              </h1>
+              <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                {crmStats.totalContacts} contato{crmStats.totalContacts !== 1 ? 's' : ''}
+              </span>
+              {crmStats.totalValue > 0 && (
                 <span style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px', background: 'var(--success-light)', color: 'var(--success)', borderRadius: 'var(--radius)', fontSize: 14, fontWeight: 600 }}>
-                  {formatValue(stats.totalValue)}
+                  {formatValue(crmStats.totalValue)}
                 </span>
               )}
             </div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <button onClick={() => setContactsOpen(true)} className="btn" style={{ background: '#0D9488', color: 'white' }} title="Todos os Contatos">
+                <Users size={16} />
+                Contatos
+              </button>
               <button onClick={() => setRoadmapOpen(true)} className="btn btn-accent" title="Business Roadmap">
                 <FolderKanban size={16} />
                 Roadmap
-              </button>
-              <button onClick={() => setContactsOpen(true)} className="btn" style={{ background: '#0D9488', color: 'white' }} title="Contatos CRM">
-                <Users size={16} />
-                CRM
-              </button>
-              <button onClick={() => setFunnelOpen(true)} className="btn" style={{ background: '#8B5CF6', color: 'white' }} title="Funil de Vendas">
-                <TrendingUp size={16} />
               </button>
               <button onClick={() => setFollowupsOpen(true)} className="btn btn-notification" style={{ background: '#0F766E', color: 'white', position: 'relative' }} title="Follow-ups pendentes">
                 <Bell size={16} />
@@ -411,8 +235,11 @@ function AuthenticatedApp({ user, onLogout }: { user: User; onLogout: () => void
                   <Settings size={16} />
                 </button>
               )}
-              <button onClick={refresh} className="btn btn-ghost" title="Atualizar">
+              <button onClick={reload} className="btn btn-ghost" title="Atualizar">
                 <RefreshCw size={16} />
+              </button>
+              <button onClick={() => setDarkMode(!darkMode)} className="btn btn-ghost" title={darkMode ? 'Modo claro' : 'Modo escuro'}>
+                {darkMode ? '☀️' : '🌙'}
               </button>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 8, paddingLeft: 12, borderLeft: '1px solid var(--border)' }}>
                 <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{user.name || user.email}</span>
@@ -439,52 +266,64 @@ function AuthenticatedApp({ user, onLogout }: { user: User; onLogout: () => void
           )}
         </header>
 
-        <Board
-          columns={filteredColumns}
-          onAddColumn={handleAddColumn}
-          onAddTask={handleAddTask}
-          onEditTask={handleEditTask}
+        <CRMBoard
+          columns={columns}
+          loading={loading}
+          onContactClick={handleContactClick}
+          onAddContact={handleAddContact}
+          onMoveContact={moveContact}
+          onAddColumn={addColumn}
           onUpdateColumn={updateColumn}
-          onDeleteColumn={removeColumn}
-          onMoveTask={moveTask}
-          onToggleFocus={toggleTaskFocus}
+          onDeleteColumn={deleteColumn}
         />
       </div>
 
-      {modalOpen && (
-        <TaskModal
-          task={editingTask}
-          columnId={selectedColumnId}
-          categories={categories}
-          onClose={() => setModalOpen(false)}
-          onSave={handleSaveTask}
-          onUpdate={handleUpdateTask}
-          onDelete={handleDeleteTask}
-          onToggleBlock={handleToggleBlock}
-        />
-      )}
+      <ContactsPanel
+        isOpen={contactsOpen}
+        onClose={() => {
+          setContactsOpen(false);
+          setAddingToColumnId(null);
+        }}
+        onContactCreated={addingToColumnId ? (contact) => {
+          addContactToColumns(contact, addingToColumnId);
+          setContactsOpen(false);
+          setAddingToColumnId(null);
+        } : undefined}
+      />
 
-      <ContactsPanel isOpen={contactsOpen} onClose={() => setContactsOpen(false)} />
       <FollowupsPanel
         isOpen={followupsOpen}
         onClose={() => setFollowupsOpen(false)}
-        onOpenContact={(_contactId) => {
+        onOpenContact={(contactId) => {
           setFollowupsOpen(false);
-          setContactsOpen(true);
+          // Find the contact and open detail modal
+          for (const col of columns) {
+            const contact = col.contacts.find(c => c.id === contactId);
+            if (contact) {
+              setSelectedContact(contact);
+              setContactDetailOpen(true);
+              break;
+            }
+          }
         }}
       />
+
       <RoadmapPanel isOpen={roadmapOpen} onClose={() => setRoadmapOpen(false)} />
-      <FunnelPanel
-        isOpen={funnelOpen}
-        onClose={() => setFunnelOpen(false)}
-        onOpenContact={() => {
-          setFunnelOpen(false);
-          setContactsOpen(true);
-        }}
-      />
+
       {user.role === 'master' && (
         <AdminPanel isOpen={adminPanelOpen} onClose={() => setAdminPanelOpen(false)} />
       )}
+
+      <ContactDetailModal
+        contact={selectedContact}
+        isOpen={contactDetailOpen}
+        onClose={() => {
+          setContactDetailOpen(false);
+          setSelectedContact(null);
+        }}
+        onContactUpdated={handleContactUpdated}
+        onContactDeleted={handleContactDeleted}
+      />
 
       <ConfirmDialog
         isOpen={confirmDialog.isOpen}

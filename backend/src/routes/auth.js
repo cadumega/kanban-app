@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 const rateLimit = require('express-rate-limit');
 const usersDb = require('../database/users');
+const { getUserDb } = require('../database/userDb');
 const logger = require('../config/logger');
 const { jwt: jwtConfig, rateLimit: rateLimitConfig } = require('../config/security');
 
@@ -114,7 +115,7 @@ router.get('/users', (req, res) => {
     }
 
     const users = usersDb.prepare(`
-      SELECT id, email, name, role, active, created_at
+      SELECT id, email, name, role, active, delegated_to, created_at
       FROM users
       ORDER BY created_at DESC
     `).all();
@@ -138,7 +139,7 @@ router.post('/users', (req, res) => {
       return res.status(403).json({ error: 'Acesso negado. Apenas master.' });
     }
 
-    const { email, password, name } = req.body;
+    const { email, password, name, share_workspace } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({ error: 'Email e senha são obrigatórios' });
@@ -152,17 +153,21 @@ router.post('/users', (req, res) => {
     const id = uuidv4();
     const passwordHash = bcrypt.hashSync(password, 10);
 
+    // If share_workspace is true, delegate to the master who is creating
+    const delegatedTo = share_workspace ? decoded.email : null;
+
     usersDb.prepare(`
-      INSERT INTO users (id, email, password_hash, name, role)
-      VALUES (?, ?, ?, ?, 'user')
-    `).run(id, email.toLowerCase(), passwordHash, name || '');
+      INSERT INTO users (id, email, password_hash, name, role, delegated_to)
+      VALUES (?, ?, ?, ?, 'user', ?)
+    `).run(id, email.toLowerCase(), passwordHash, name || '', delegatedTo);
 
     res.status(201).json({
       id,
       email: email.toLowerCase(),
       name: name || '',
       role: 'user',
-      active: 1
+      active: 1,
+      delegated_to: delegatedTo
     });
   } catch (error) {
     console.error('Create user error:', error);
@@ -184,7 +189,7 @@ router.put('/users/:id', (req, res) => {
     }
 
     const { id } = req.params;
-    const { name, password, active } = req.body;
+    const { name, password, active, share_workspace } = req.body;
 
     const user = usersDb.prepare('SELECT * FROM users WHERE id = ?').get(id);
     if (!user) {
@@ -212,12 +217,26 @@ router.put('/users/:id', (req, res) => {
       params.push(active ? 1 : 0);
     }
 
+    // Handle share_workspace changes
+    if (share_workspace !== undefined) {
+      // If was delegated and now removing delegation, deactivate user
+      if (user.delegated_to && !share_workspace) {
+        query += ', delegated_to = NULL, active = 0';
+      } else if (share_workspace) {
+        // Set delegation to the master making the request
+        query += ', delegated_to = ?';
+        params.push(decoded.email);
+      } else {
+        query += ', delegated_to = NULL';
+      }
+    }
+
     query += ' WHERE id = ?';
     params.push(id);
 
     usersDb.prepare(query).run(...params);
 
-    const updated = usersDb.prepare('SELECT id, email, name, role, active FROM users WHERE id = ?').get(id);
+    const updated = usersDb.prepare('SELECT id, email, name, role, active, delegated_to FROM users WHERE id = ?').get(id);
     res.json(updated);
   } catch (error) {
     console.error('Update user error:', error);
@@ -254,6 +273,71 @@ router.delete('/users/:id', (req, res) => {
   } catch (error) {
     console.error('Delete user error:', error);
     res.status(500).json({ error: 'Erro ao excluir usuário' });
+  }
+});
+
+// GET /api/auth/audit-logs - Get audit logs (master only)
+router.get('/audit-logs', (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: 'Não autorizado' });
+
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, JWT_SECRET);
+
+    if (decoded.role !== 'master') {
+      return res.status(403).json({ error: 'Acesso negado. Apenas master.' });
+    }
+
+    const { limit = 50, offset = 0, user, entity_type } = req.query;
+    const db = getUserDb(decoded.email); // Master's workspace
+
+    let query = 'SELECT * FROM audit_logs WHERE 1=1';
+    const params = [];
+
+    if (user) {
+      query += ' AND user_email = ?';
+      params.push(user);
+    }
+    if (entity_type) {
+      query += ' AND entity_type = ?';
+      params.push(entity_type);
+    }
+
+    query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
+    params.push(parseInt(limit), parseInt(offset));
+
+    const logs = db.prepare(query).all(...params);
+
+    // Get total count for pagination
+    let countQuery = 'SELECT COUNT(*) as total FROM audit_logs WHERE 1=1';
+    const countParams = [];
+    if (user) {
+      countQuery += ' AND user_email = ?';
+      countParams.push(user);
+    }
+    if (entity_type) {
+      countQuery += ' AND entity_type = ?';
+      countParams.push(entity_type);
+    }
+    const { total } = db.prepare(countQuery).get(...countParams);
+
+    // Get list of users who have activity in audit logs
+    const users = db.prepare('SELECT DISTINCT user_email, user_name FROM audit_logs ORDER BY user_email').all();
+
+    res.json({
+      logs,
+      total,
+      users,
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
+  } catch (error) {
+    console.error('Audit logs error:', error);
+    if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
+      return res.status(401).json({ error: 'Token inválido ou expirado' });
+    }
+    res.status(500).json({ error: 'Erro ao buscar histórico de atividades' });
   }
 });
 
