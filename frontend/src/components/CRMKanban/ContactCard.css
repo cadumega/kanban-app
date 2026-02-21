@@ -82,6 +82,23 @@
   white-space: nowrap;
 }
 
+.contact-card__segments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.contact-card__segment {
+  font-size: 9px;
+  font-weight: 600;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
 .contact-card__footer {
   display: flex;
   align-items: center;

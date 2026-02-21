@@ -1,7 +1,7 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Building2, Clock, DollarSign } from 'lucide-react';
-import type { Contact } from '../../types';
+import type { Contact, ContactSegment } from '../../types';
 import './ContactCard.css';
 
 interface ContactCardProps {
@@ -9,6 +9,20 @@ interface ContactCardProps {
   onClick: () => void;
   isDragging?: boolean;
 }
+
+const SEGMENT_COLORS: Record<ContactSegment, string> = {
+  'n8n': '#EA4B71',
+  'chapeu': '#8B5CF6',
+  'parceria': '#22C55E',
+  'consultoria': '#F59E0B',
+};
+
+const SEGMENT_LABELS: Record<ContactSegment, string> = {
+  'n8n': 'N8N',
+  'chapeu': 'Chapéu',
+  'parceria': 'Parceria',
+  'consultoria': 'Consultoria',
+};
 
 function formatCurrency(value: number): string {
   if (value >= 1000) {
@@ -77,6 +91,21 @@ export function ContactCard({ contact, onClick, isDragging }: ContactCardProps) 
         <div className="contact-card__company">
           <Building2 size={12} />
           <span>{contact.company}</span>
+        </div>
+      )}
+
+      {contact.segments && (
+        <div className="contact-card__segments">
+          {contact.segments.split(',').map((seg) => (
+            <span
+              key={seg}
+              className="contact-card__segment"
+              style={{ background: SEGMENT_COLORS[seg as ContactSegment] || '#6B7280' }}
+              title={SEGMENT_LABELS[seg as ContactSegment] || seg}
+            >
+              {SEGMENT_LABELS[seg as ContactSegment] || seg}
+            </span>
+          ))}
         </div>
       )}
 
