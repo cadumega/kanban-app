@@ -145,6 +145,23 @@ router.post('/users', (req, res) => {
       return res.status(400).json({ error: 'Email e senha são obrigatórios' });
     }
 
+    // Password strength validation
+    if (password.length < 8) {
+      return res.status(400).json({ error: 'Senha deve ter no mínimo 8 caracteres' });
+    }
+    if (!/[A-Z]/.test(password)) {
+      return res.status(400).json({ error: 'Senha deve conter pelo menos uma letra maiúscula' });
+    }
+    if (!/[0-9]/.test(password)) {
+      return res.status(400).json({ error: 'Senha deve conter pelo menos um número' });
+    }
+
+    // Email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: 'Formato de email inválido' });
+    }
+
     const exists = usersDb.prepare('SELECT id FROM users WHERE email = ?').get(email.toLowerCase());
     if (exists) {
       return res.status(400).json({ error: 'Email já cadastrado' });

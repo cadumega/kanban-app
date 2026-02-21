@@ -79,6 +79,29 @@ router.post('/', (req, res) => {
     return res.status(400).json({ error: 'Nome é obrigatório' });
   }
 
+  // Input validation - prevent oversized payloads and validate formats
+  if (name.length > 255) {
+    return res.status(400).json({ error: 'Nome muito longo (máx 255 caracteres)' });
+  }
+  if (email && email.length > 255) {
+    return res.status(400).json({ error: 'Email muito longo (máx 255 caracteres)' });
+  }
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).json({ error: 'Formato de email inválido' });
+  }
+  if (phone && phone.length > 30) {
+    return res.status(400).json({ error: 'Telefone muito longo (máx 30 caracteres)' });
+  }
+  if (company && company.length > 255) {
+    return res.status(400).json({ error: 'Empresa muito longo (máx 255 caracteres)' });
+  }
+  if (valor_implementacao && (typeof valor_implementacao !== 'number' || valor_implementacao < 0)) {
+    return res.status(400).json({ error: 'Valor de implementação inválido' });
+  }
+  if (valor_mensal && (typeof valor_mensal !== 'number' || valor_mensal < 0)) {
+    return res.status(400).json({ error: 'Valor mensal inválido' });
+  }
+
   // Get board and column for new contact
   let boardId = board_id;
   let columnId = column_id;

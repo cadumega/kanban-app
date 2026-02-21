@@ -138,12 +138,12 @@ function migrateUserDb(db) {
 
     // Add board_id to columns
     db.exec('ALTER TABLE columns ADD COLUMN board_id TEXT');
-    db.exec(`UPDATE columns SET board_id = '${defaultBoardId}'`);
+    db.prepare('UPDATE columns SET board_id = ?').run(defaultBoardId);
     db.exec('CREATE INDEX IF NOT EXISTS idx_columns_board ON columns(board_id)');
 
     // Add board_id to tasks
     db.exec('ALTER TABLE tasks ADD COLUMN board_id TEXT');
-    db.exec(`UPDATE tasks SET board_id = '${defaultBoardId}'`);
+    db.prepare('UPDATE tasks SET board_id = ?').run(defaultBoardId);
     db.exec('CREATE INDEX IF NOT EXISTS idx_tasks_board ON tasks(board_id)');
 
     console.log('Migration: Created boards table and migrated existing data');
