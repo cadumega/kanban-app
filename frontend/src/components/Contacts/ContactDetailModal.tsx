@@ -21,6 +21,7 @@ import {
   Link,
   DollarSign,
   Gift,
+  Maximize2,
 } from 'lucide-react';
 import type { Contact, ContactFollowup, ContactSegment } from '../../types';
 import * as api from '../../services/api';
@@ -67,6 +68,9 @@ export function ContactDetailModal({
 
   // Image preview modal
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+
+  // Fullscreen notes modal
+  const [showNotesFullscreen, setShowNotesFullscreen] = useState(false);
 
   // Toast and confirm dialog
   const toast = useToast();
@@ -794,6 +798,15 @@ export function ContactDetailModal({
                 <div className="contact-detail-modal__section contact-detail-modal__section--notes">
                   <div className="contact-detail-modal__section-header">
                     <h4><MessageSquare size={16} /> Notas</h4>
+                    {contactData.notes && contactData.notes.length > 3 && (
+                      <button
+                        onClick={() => setShowNotesFullscreen(true)}
+                        className="btn btn-ghost btn-xs"
+                        title="Ver histórico completo"
+                      >
+                        <Maximize2 size={14} />
+                      </button>
+                    )}
                   </div>
 
                   <div className="contact-detail-modal__notes-input">
@@ -933,6 +946,77 @@ export function ContactDetailModal({
                 <ExternalLink size={16} />
                 Abrir em nova aba
               </a>
+            </div>
+          </div>
+        )}
+
+        {/* Fullscreen Notes Modal */}
+        {showNotesFullscreen && contactData && (
+          <div
+            className="notes-fullscreen-overlay"
+            onClick={() => setShowNotesFullscreen(false)}
+          >
+            <div className="notes-fullscreen-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="notes-fullscreen-header">
+                <h3>
+                  <MessageSquare size={20} />
+                  Histórico de Notas - {contactData.name}
+                </h3>
+                <span className="notes-fullscreen-count">
+                  {contactData.notes?.length || 0} notas
+                </span>
+                <button
+                  className="notes-fullscreen-close"
+                  onClick={() => setShowNotesFullscreen(false)}
+                >
+                  <X size={24} />
+                </button>
+              </div>
+              <div className="notes-fullscreen-content">
+                {contactData.notes?.map(note => (
+                  <div key={note.id} className="notes-fullscreen-note">
+                    <div className="notes-fullscreen-note-header">
+                      <span className="notes-fullscreen-note-date">{formatDate(note.created_at)}</span>
+                      <div className="notes-fullscreen-note-actions">
+                        {note.content && (
+                          <button
+                            onClick={() => {
+                              setShowNotesFullscreen(false);
+                              handleStartEditNote(note);
+                            }}
+                            className="btn btn-ghost btn-xs"
+                            title="Editar"
+                          >
+                            <Edit3 size={14} />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleDeleteNote(note.id)}
+                          className="btn btn-ghost btn-xs btn-danger"
+                          title="Excluir"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                    {note.content && (
+                      <p className="notes-fullscreen-note-content">{note.content}</p>
+                    )}
+                    {note.image_path && (
+                      <div className="notes-fullscreen-note-image">
+                        <img
+                          src={api.getContactImageUrl(note.image_path)}
+                          alt="Imagem da nota"
+                          onClick={() => setPreviewImage(api.getContactImageUrl(note.image_path!))}
+                        />
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {(!contactData.notes || contactData.notes.length === 0) && (
+                  <p className="notes-fullscreen-empty">Nenhuma nota ainda</p>
+                )}
+              </div>
             </div>
           </div>
         )}
