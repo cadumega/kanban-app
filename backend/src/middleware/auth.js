@@ -7,14 +7,24 @@ const JWT_SECRET = jwtConfig.secret;
 
 function authMiddleware(req, res, next) {
   try {
-    const authHeader = req.headers.authorization;
+    let token;
 
-    // SECURITY: Only accept tokens via Authorization header (never query params)
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Token não fornecido' });
+    // Priority 1: httpOnly cookie (most secure)
+    if (req.cookies && req.cookies.auth_token) {
+      token = req.cookies.auth_token;
+    }
+    // Priority 2: Authorization header (for API clients)
+    else if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+      token = req.headers.authorization.split(' ')[1];
+    }
+    // Priority 3: Query param ONLY for image endpoints (img tags can't send headers/cookies)
+    else if (req.query.token && req.path.includes('/images/')) {
+      token = req.query.token;
     }
 
-    const token = authHeader.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'Token não fornecido' });
+    }
     const decoded = jwt.verify(token, JWT_SECRET);
 
     // Verify user still exists and is active

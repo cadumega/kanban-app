@@ -236,6 +236,16 @@ function migrateUserDb(db) {
     // Migrate existing contacts to CRM Kanban columns
     migrateCRMKanban(db);
   }
+
+  // Add performance indexes (idempotent - CREATE INDEX IF NOT EXISTS)
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_contacts_tag ON contacts(tag);
+    CREATE INDEX IF NOT EXISTS idx_contacts_created_at ON contacts(created_at);
+    CREATE INDEX IF NOT EXISTS idx_contact_notes_created_at ON contact_notes(created_at);
+    CREATE INDEX IF NOT EXISTS idx_tasks_board_column ON tasks(board_id, column_id);
+    CREATE INDEX IF NOT EXISTS idx_tasks_assignee ON tasks(assignee);
+    CREATE INDEX IF NOT EXISTS idx_tasks_priority ON tasks(priority);
+  `);
 }
 
 // Migrate existing contacts to CRM Kanban structure

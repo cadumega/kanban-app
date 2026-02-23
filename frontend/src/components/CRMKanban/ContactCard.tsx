@@ -1,6 +1,6 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Building2, Clock, DollarSign } from 'lucide-react';
+import { Building2, Clock, DollarSign, Bot, Gift } from 'lucide-react';
 import type { Contact, ContactSegment } from '../../types';
 import './ContactCard.css';
 
@@ -77,12 +77,12 @@ export function ContactCard({ contact, onClick, isDragging }: ContactCardProps) 
         <span className="contact-card__name">{contact.name}</span>
         {contact.is_robot === 1 && (
           <span className="contact-card__badge contact-card__badge--robot" title="Robot">
-            R
+            <Bot size={12} />
           </span>
         )}
         {contact.presente === 1 && (
           <span className="contact-card__badge contact-card__badge--gift" title="Presente enviado">
-            P
+            <Gift size={12} />
           </span>
         )}
       </div>

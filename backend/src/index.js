@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const cookieParser = require('cookie-parser');
 const path = require('path');
 
 const authRouter = require('./routes/auth');
@@ -48,6 +49,9 @@ const globalLimiter = rateLimit({
   legacyHeaders: false
 });
 app.use(globalLimiter);
+
+// Cookie parsing (for httpOnly JWT cookies)
+app.use(cookieParser());
 
 // Body parsing
 app.use(express.json({ limit: '10mb' }));

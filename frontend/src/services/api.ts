@@ -6,6 +6,7 @@ const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 export const api = axios.create({
   baseURL: API_URL,
+  withCredentials: true, // Send cookies with requests
 });
 
 // Auth token management
@@ -42,6 +43,13 @@ api.interceptors.response.use(
 export const login = async (email: string, password: string): Promise<LoginResponse> => {
   const { data } = await api.post('/auth/login', { email, password });
   return data;
+};
+
+export const logout = async (): Promise<void> => {
+  await api.post('/auth/logout');
+  // Clear localStorage as well for backwards compatibility
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
 };
 
 export const getCurrentUser = async (): Promise<User> => {

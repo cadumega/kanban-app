@@ -7,7 +7,7 @@ const rateLimit = require('express-rate-limit');
 const usersDb = require('../database/users');
 const { getUserDb } = require('../database/userDb');
 const logger = require('../config/logger');
-const { jwt: jwtConfig, rateLimit: rateLimitConfig } = require('../config/security');
+const { jwt: jwtConfig, rateLimit: rateLimitConfig, isProduction } = require('../config/security');
 
 const JWT_SECRET = jwtConfig.secret;
 const JWT_EXPIRES_IN = jwtConfig.expiresIn;
@@ -60,8 +60,17 @@ router.post('/login', loginLimiter, (req, res) => {
 
     logger.authEvent('login_success', user.id, user.email, true);
 
+    // Set httpOnly cookie for secure token storage
+    res.cookie('auth_token', token, {
+      httpOnly: true,
+      secure: isProduction, // HTTPS only in production
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      path: '/'
+    });
+
     res.json({
-      token,
+      token, // Still return token for backwards compatibility
       user: {
         id: user.id,
         email: user.email,
@@ -75,15 +84,33 @@ router.post('/login', loginLimiter, (req, res) => {
   }
 });
 
+// POST /api/auth/logout - Clear auth cookie
+router.post('/logout', (req, res) => {
+  res.clearCookie('auth_token', {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: 'lax',
+    path: '/'
+  });
+  res.json({ message: 'Logout realizado com sucesso' });
+});
+
 // GET /api/auth/me - Get current user
 router.get('/me', (req, res) => {
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    let token;
+
+    // Check cookie first, then Authorization header
+    if (req.cookies && req.cookies.auth_token) {
+      token = req.cookies.auth_token;
+    } else if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+      token = req.headers.authorization.split(' ')[1];
+    }
+
+    if (!token) {
       return res.status(401).json({ error: 'Token não fornecido' });
     }
 
-    const token = authHeader.split(' ')[1];
     const decoded = jwt.verify(token, JWT_SECRET);
 
     const user = usersDb.prepare('SELECT id, email, name, role, active FROM users WHERE id = ?').get(decoded.id);
